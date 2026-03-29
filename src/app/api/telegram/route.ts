@@ -224,9 +224,13 @@ async function processUpdate(update: any) {
       await sendTelegram(chatId, result.reply, {
         inline_keyboard: [
           [
-            { text: "📥 รายรับ", callback_data: "confirm:income" },
-            { text: "📤 รายจ่าย", callback_data: "confirm:expense" },
-            { text: "❌ ยกเลิก", callback_data: "confirm:cancel" },
+            { text: "✅ รายรับ (เงินเข้า)", callback_data: "confirm:income" },
+          ],
+          [
+            { text: "🔴 รายจ่าย (เงินออก)", callback_data: "confirm:expense" },
+          ],
+          [
+            { text: "❌ ยกเลิก ไม่บันทึก", callback_data: "confirm:cancel" },
           ],
         ],
       });
@@ -330,9 +334,13 @@ async function handlePhotoMessage(message: any, telegramId: number, chatId: numb
       await sendTelegram(chatId, result.reply, {
         inline_keyboard: [
           [
-            { text: "📥 รายรับ", callback_data: "confirm:income" },
-            { text: "📤 รายจ่าย", callback_data: "confirm:expense" },
-            { text: "❌ ยกเลิก", callback_data: "confirm:cancel" },
+            { text: "✅ รายรับ (เงินเข้า)", callback_data: "confirm:income" },
+          ],
+          [
+            { text: "🔴 รายจ่าย (เงินออก)", callback_data: "confirm:expense" },
+          ],
+          [
+            { text: "❌ ยกเลิก ไม่บันทึก", callback_data: "confirm:cancel" },
           ],
         ],
       });
