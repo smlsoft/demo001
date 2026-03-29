@@ -324,7 +324,21 @@ async function handlePhotoMessage(message: any, telegramId: number, chatId: numb
     const mimeType = filePath.endsWith(".png") ? "image/png" : "image/jpeg";
 
     const result = await withTimeout(handlePhoto(base64, mimeType, userId, "telegram"), MAX_PROCESS_TIME);
-    await sendTelegram(chatId, result.reply);
+
+    // ถ้าเป็นเอกสารการเงิน → ส่งปุ่มกดเลือก รายรับ/รายจ่าย/ยกเลิก
+    if (result.action === "vision_financial") {
+      await sendTelegram(chatId, result.reply, {
+        inline_keyboard: [
+          [
+            { text: "📥 รายรับ", callback_data: "confirm:income" },
+            { text: "📤 รายจ่าย", callback_data: "confirm:expense" },
+            { text: "❌ ยกเลิก", callback_data: "confirm:cancel" },
+          ],
+        ],
+      });
+    } else {
+      await sendTelegram(chatId, result.reply);
+    }
   } catch (err: any) {
     console.error("[Telegram] photo error:", err?.message);
     await sendTelegram(chatId, `เกิดข้อผิดพลาดในการวิเคราะห์รูป ลองส่งใหม่นะคะ`);
