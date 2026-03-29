@@ -163,8 +163,15 @@ const USER_TEMPLATES: Record<string, TxTemplate[]> = {
 
 // ===== Helper =====
 
+// Seeded random — ให้ผลเหมือนเดิมทุกครั้ง (deterministic)
+let _seed = 12345;
+function seededRand(min: number, max: number): number {
+  _seed = (_seed * 1103515245 + 12345) & 0x7fffffff;
+  return min + (_seed % (max - min + 1));
+}
+
 function rand(min: number, max: number): number {
-  return Math.floor(Math.random() * (max - min + 1)) + min;
+  return seededRand(min, max);
 }
 
 function roundTo10(n: number): number {
@@ -198,14 +205,15 @@ function generateTransactions(userId: string, templates: TxTemplate[]): Array<{
       // ตรวจว่าเดือนนี้มี template นี้ไหม
       if (t.months && !t.months.includes(month)) continue;
 
-      // สุ่มจำนวนครั้งในเดือนนี้ตาม freq
+      // กำหนดจำนวนครั้งตาม freq (deterministic ไม่สุ่ม)
       let count: number;
       if (t.freq >= 1) {
-        // สุ่ม ± 30% ของ freq
-        count = Math.max(1, Math.round(t.freq * (0.7 + Math.random() * 0.6)));
+        // ± variation ตาม seed
+        const variation = seededRand(70, 130) / 100;
+        count = Math.max(1, Math.round(t.freq * variation));
       } else {
-        // freq < 1 = ไม่เกิดทุกเดือน
-        count = Math.random() < t.freq ? 1 : 0;
+        // freq < 1 = ไม่เกิดทุกเดือน → ใช้ seed ตัดสิน
+        count = seededRand(1, 100) <= t.freq * 100 ? 1 : 0;
       }
 
       for (let i = 0; i < count; i++) {
@@ -383,6 +391,8 @@ export async function seedDemoData() {
   await User.insertMany(DEMO_USERS_DATA);
 
   for (const [userId, templates] of Object.entries(USER_TEMPLATES)) {
+    // Reset seed ตาม userId → ข้อมูลเหมือนเดิมทุกครั้ง
+    _seed = userId.charCodeAt(5) * 10000 + 12345;
     const txs = generateTransactions(userId, templates);
     if (txs.length > 0) {
       await Transaction.insertMany(txs);
@@ -433,6 +443,7 @@ export async function resetAndSeed() {
   await User.insertMany(DEMO_USERS_DATA);
 
   for (const [userId, templates] of Object.entries(USER_TEMPLATES)) {
+    _seed = userId.charCodeAt(5) * 10000 + 12345;
     const txs = generateTransactions(userId, templates);
     if (txs.length > 0) {
       await Transaction.insertMany(txs);

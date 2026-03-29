@@ -10,6 +10,8 @@ export interface IPendingTx extends Document {
   description: string;
   suggestedType: "income" | "expense" | "unknown";
   imageInfo: string;
+  visionResult: string; // JSON ผลวิเคราะห์จาก AI (audit trail)
+  fileId: string; // เชื่อม FileDoc._id ของ slip
   expiresAt: Date;
   createdAt: Date;
 }
@@ -21,7 +23,9 @@ const PendingTxSchema = new Schema<IPendingTx>(
     description: { type: String, required: true },
     suggestedType: { type: String, enum: ["income", "expense", "unknown"], default: "unknown" },
     imageInfo: { type: String, default: "" },
-    expiresAt: { type: Date, default: () => new Date(Date.now() + 30 * 60 * 1000) }, // 30 นาที
+    visionResult: { type: String, default: "" }, // เก็บ JSON ผลวิเคราะห์เต็ม
+    fileId: { type: String, default: "" }, // เชื่อมกับ FileDoc._id
+    expiresAt: { type: Date, default: () => new Date(Date.now() + 30 * 60 * 1000) },
   },
   { timestamps: true }
 );

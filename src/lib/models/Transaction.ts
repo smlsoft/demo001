@@ -8,6 +8,7 @@ export interface ITransaction extends Document {
   type: "income" | "expense";
   category: string;
   note: string;
+  slipFileId: string;
   createdAt: Date;
 }
 
@@ -20,6 +21,7 @@ const TransactionSchema = new Schema<ITransaction>(
     type: { type: String, enum: ["income", "expense"], required: true },
     category: { type: String, required: true },
     note: { type: String, default: "" },
+    slipFileId: { type: String, default: "" }, // เชื่อมกับ FileDoc._id (ถ้ามี slip)
   },
   { timestamps: true }
 );

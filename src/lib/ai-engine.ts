@@ -153,7 +153,10 @@ async function buildSystemPrompt(userId: string) {
 - พูดสุภาพ อบอุ่น เหมือนคนใกล้ชิดที่ห่วงใย
 - ให้คำแนะนำเรื่องการเงินเชิงรุก เช่น เตือนถ้ารายจ่ายเยอะ แนะนำวิธีออม
 - ถ้างบประมาณหมวดไหนใกล้เต็มหรือเกิน ให้เตือนเจ้านายด้วย
-- สำคัญ: ห้ามคิดเลขเรื่องเงินเอง ถ้าถามเรื่องยอดเงิน ให้ใช้ข้อมูลด้านล่างเท่านั้น ถ้าไม่มีข้อมูลให้บอกว่า "ลองพิมพ์ สรุปยอด เพื่อดูข้อมูลล่าสุดค่ะ"
+- สำคัญมาก: ห้ามคิดเลข/เดาตัวเลข/อ้างตัวเลขเรื่องเงินเด็ดขาด
+- ถ้าถามเรื่องยอดเงิน/รายรับ/รายจ่าย/คงเหลือ/ออม/หนี้ ให้ใช้ข้อมูลด้านล่างเท่านั้น
+- ถ้าไม่มีข้อมูลหรือไม่แน่ใจ ให้บอกว่า "ลองพิมพ์ สรุปยอด เพื่อดูข้อมูลล่าสุดจากฐานข้อมูลค่ะ"
+- ห้ามบอกตัวเลขที่ไม่ได้อยู่ในข้อมูลด้านล่าง ห้ามคำนวณเอง ห้ามประมาณ
 - ถ้าหนี้ใกล้ถึงกำหนดจ่าย ให้เตือนด้วย
 - ถ้าเป้าออมใกล้ถึงเป้า ให้ให้กำลังใจ
 
@@ -214,8 +217,8 @@ export async function processMessage(
     await PendingTx.deleteOne({ _id: pending._id });
   }
 
-  // 1. สรุปยอด — ดึงจาก DB จริงเท่านั้น
-  if (/สรุป|รายงาน|ยอด|เหลือเท่าไ|คงเหลือ|เงินเท่าไ|มีเงิน|เงินเหลือ|รวมทั้งหมด|ทั้งหมดเท่าไ|รายรับรวม|รายจ่ายรวม|เท่าไหร่|กี่บาท/.test(msg)) {
+  // 1. สรุปยอด — ดึงจาก DB จริงเท่านั้น (ครอบคลุมทุกรูปแบบคำถามเรื่องเงิน)
+  if (/สรุป|รายงาน|ยอด|เหลือเท่าไ|คงเหลือ|เงินเท่าไ|มีเงิน|เงินเหลือ|รวมทั้งหมด|ทั้งหมดเท่าไ|รายรับรวม|รายจ่ายรวม|เท่าไหร่|กี่บาท|เงินได้|ได้เงิน|ใช้ไป|จ่ายไป|รับมา|เงินรับ|เงินจ่าย|balance|total|รวมรายรับ|รวมรายจ่าย/.test(msg)) {
     const [inc, exp] = await Promise.all([
       Transaction.aggregate([{ $match: { userId, type: "income" } }, { $group: { _id: null, total: { $sum: "$amount" } } }]),
       Transaction.aggregate([{ $match: { userId, type: "expense" } }, { $group: { _id: null, total: { $sum: "$amount" } } }]),
@@ -254,8 +257,8 @@ export async function processMessage(
     };
   }
 
-  // 3.5 ถามเรื่องเงิน/บัญชี → ดึง DB ตอบ ไม่ให้ AI ตอบมั่ว
-  if (/เงิน|บัญชี|ออม|หนี้|งบ|budget|income|expense|saving/.test(msg) && /เท่าไ|กี่|มาก|น้อย|พอ|เหลือ|ใช้ไป|ได้เท่า/.test(msg)) {
+  // 3.5 ถามเรื่องเงิน/บัญชี → ดึง DB ตอบ ไม่ให้ AI ตอบมั่ว (ครอบคลุมทุกรูปแบบ)
+  if (/เงิน|บัญชี|ออม|หนี้|งบ|budget|income|expense|saving|ค่าใช้จ่าย|รายได้|กำไร|ขาดทุน|เก็บเงิน/.test(msg) && /เท่าไ|กี่|มาก|น้อย|พอ|เหลือ|ใช้ไป|ได้เท่า|ทั้งหมด|รวม|ดู|เช็ค|ตรวจ|check/.test(msg)) {
     const [inc, exp] = await Promise.all([
       Transaction.aggregate([{ $match: { userId, type: "income" } }, { $group: { _id: null, total: { $sum: "$amount" } } }]),
       Transaction.aggregate([{ $match: { userId, type: "expense" } }, { $group: { _id: null, total: { $sum: "$amount" } } }]),
@@ -339,6 +342,8 @@ async function confirmPendingTx(
     amount: pending.amount,
     type,
     category,
+    slipFileId: pending.fileId || "", // เชื่อมกับ slip image
+    note: pending.visionResult ? `AI วิเคราะห์: ${pending.description}` : "",
   });
 
   await PendingTx.deleteOne({ _id: pending._id });
@@ -369,10 +374,11 @@ export async function handleImage(
   const ext = mimeType.includes("png") ? "png" : "jpg";
   const filename = `${uuidv4()}.${ext}`;
   const buffer = Buffer.from(imageBase64, "base64");
+  let fileDocId = "";
 
   try {
     const r2Key = await uploadToR2(userId, filename, buffer, mimeType);
-    await FileDoc.create({
+    const fileDoc = await FileDoc.create({
       userId,
       filename,
       originalName: `${source}-${new Date().toISOString().slice(0, 10)}.${ext}`,
@@ -382,9 +388,9 @@ export async function handleImage(
       description: `ส่งจาก ${source === "telegram" ? "Telegram" : "เว็บ"}`,
       r2Key,
     });
+    fileDocId = fileDoc._id.toString();
   } catch (err) {
     console.error("[handleImage] R2 upload error:", err);
-    // ไม่ block flow ถ้า upload ล้มเหลว
   }
 
   // 2. วิเคราะห์รูปด้วย AI Vision
@@ -395,8 +401,8 @@ export async function handleImage(
   await ChatMessage.create({ userId, role: "user", content: `[ส่งรูปภาพจาก ${source}]` });
   await ChatMessage.create({ userId, role: "assistant", content: reply, action: result.isFinancial ? "vision_financial" : "vision" });
 
-  // 4. ถ้าเป็นเอกสารการเงิน → สร้าง pending tx รอยืนยัน
-  if (result.isFinancial && result.amount && result.amount > 0) {
+  // 4. ถ้าเป็นเอกสารการเงิน → สร้าง pending tx + เก็บ visionResult + fileId
+  if (result.isFinancial && result.amount && result.amount > 0 && result.amount <= 10000000) {
     await PendingTx.deleteMany({ userId });
     await PendingTx.create({
       userId,
@@ -404,7 +410,15 @@ export async function handleImage(
       description: result.description || "จากรูปภาพ",
       suggestedType: result.type || "unknown",
       imageInfo: JSON.stringify({ from: result.from, to: result.to, date: result.date }),
+      visionResult: JSON.stringify(result), // เก็บผลวิเคราะห์ทั้งหมด (audit trail)
+      fileId: fileDocId, // เชื่อมกับ FileDoc
     });
+
+    // อัพเดท FileDoc category ตามประเภท
+    if (fileDocId) {
+      const slipCat = result.type === "income" ? "slip เงินเข้า" : result.type === "expense" ? "slip เงินออก" : "ใบเสร็จ";
+      await FileDoc.updateOne({ _id: fileDocId }, { $set: { category: slipCat, description: result.description || "จากรูปภาพ" } });
+    }
   }
 
   return { reply, action: result.isFinancial ? "vision_financial" : "vision" };
