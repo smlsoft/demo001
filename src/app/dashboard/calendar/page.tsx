@@ -40,8 +40,11 @@ export default function CalendarPage() {
     (async () => {
       setLoading(true);
       try {
-        const res = await fetch("/api/transactions");
-        if (res.ok) setTxs(await res.json());
+        const res = await fetch("/api/transactions?limit=200");
+        if (res.ok) {
+          const json = await res.json();
+          setTxs(Array.isArray(json) ? json : json.data || []);
+        }
       } catch { /* ignore */ }
       setLoading(false);
     })();
