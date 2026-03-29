@@ -30,8 +30,16 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
+# env files - ห้าม push ขึ้น git เด็ดขาด
 .env*
+!.env.example
+
+# data
+/data/
+
+# test scripts ที่มี credentials
+scripts/test-ai.ts
+scripts/test-memory.ts
 
 # vercel
 .vercel

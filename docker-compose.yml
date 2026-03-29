@@ -1,0 +1,42 @@
+version: "3.8"
+
+services:
+  # OpenClaw AI Agent
+  openclaw:
+    image: ghcr.io/openclaw/openclaw:latest
+    container_name: thaiclaw-openclaw
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      - PORT=3001
+      # ตั้งค่า AI model (ใช้ Anthropic Claude หรือ OpenAI)
+      # เลือกอย่างใดอย่างหนึ่ง:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      # - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+
+      # ตั้งค่า system prompt ภาษาไทย
+      - SYSTEM_PROMPT=คุณคือ ThaiClaw AI ผู้ช่วยบัญชีครัวเรือนสำหรับชาวบ้านไทย พูดภาษาไทยเข้าใจง่าย สุภาพ ช่วยบันทึกรายรับ-รายจ่าย ให้คำแนะนำการเงิน ตอบคำถามทั่วไป
+    volumes:
+      - openclaw_data:/data
+
+  # ThaiClaw Web App
+  thaiclaw:
+    build: .
+    container_name: thaiclaw-web
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - MONGODB_URI=${MONGODB_URI}
+      - R2_ACCOUNT_ID=${R2_ACCOUNT_ID}
+      - R2_ACCESS_KEY_ID=${R2_ACCESS_KEY_ID}
+      - R2_SECRET_ACCESS_KEY=${R2_SECRET_ACCESS_KEY}
+      - R2_BUCKET_NAME=${R2_BUCKET_NAME:-thaiclaw}
+      - R2_ENDPOINT=${R2_ENDPOINT}
+      - OPENCLAW_API_URL=http://openclaw:3001/api/chat
+    depends_on:
+      - openclaw
+
+volumes:
+  openclaw_data:
