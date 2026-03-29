@@ -73,32 +73,71 @@ async function processUpdate(update: any) {
   if (!message.text) return;
   const text = message.text.trim();
 
-  // /start — สร้างบัญชีส่วนตัวอัตโนมัติจาก Telegram account
-  if (text === "/start") {
-    const personalId = `telegram-${telegramId}`;
+  // /start — เชื่อมบัญชีจากเว็บ หรือ สร้างบัญชีส่วนตัว
+  if (text.startsWith("/start")) {
+    const param = text.replace("/start", "").trim();
 
-    // สร้าง/อัพเดท user ใน DB
+    // === กรณี LINK_xxx: เชื่อมจากเว็บ (กด link ในหน้า Telegram setup) ===
+    if (param.startsWith("LINK_")) {
+      const code = param.replace("LINK_", "");
+      try {
+        const mongoose = await import("mongoose");
+        const LinkCodeSchema = new mongoose.Schema({
+          code: String, userId: String, expiresAt: Date,
+        });
+        const LinkCode = mongoose.models.LinkCode || mongoose.model("LinkCode", LinkCodeSchema);
+
+        const linkDoc = await LinkCode.findOne({ code }) as any;
+        if (linkDoc && linkDoc.expiresAt > new Date()) {
+          // ผูก Telegram ID กับ userId จากเว็บ
+          await registerTelegramUser(telegramId, telegramName, linkDoc.userId);
+          await LinkCode.deleteOne({ _id: linkDoc._id });
+
+          // หาชื่อ user
+          const { User } = await import("@/lib/models/User");
+          const user = await User.findOne({ demoId: linkDoc.userId }).lean() as any;
+          const demoUser = DEMO_USERS.find((u) => u.id === linkDoc.userId);
+          const displayName = user?.name || demoUser?.name || linkDoc.userId;
+
+          await sendTelegram(chatId,
+            `✅ เชื่อมต่อสำเร็จ!\n\n` +
+            `🔗 บัญชี Telegram ของ *${telegramName}*\n` +
+            `ผูกกับ *${displayName}* เรียบร้อยแล้ว!\n\n` +
+            `ข้อมูลเว็บ ↔ Telegram เชื่อมกันแล้ว\n` +
+            `ลองพิมพ์ "สรุปยอด" ดูได้เลย!`
+          );
+          return;
+        } else {
+          await sendTelegram(chatId, `❌ ลิงก์หมดอายุแล้ว กรุณาสร้างลิงก์ใหม่จากเว็บ`);
+          return;
+        }
+      } catch (err: any) {
+        console.error("[Telegram] LINK error:", err.message);
+        await sendTelegram(chatId, `❌ เชื่อมต่อไม่สำเร็จ กรุณาลองใหม่`);
+        return;
+      }
+    }
+
+    // === กรณีปกติ: สร้างบัญชีส่วนตัว ===
+    const personalId = `telegram-${telegramId}`;
     const { User } = await import("@/lib/models/User");
     await User.findOneAndUpdate(
       { demoId: personalId },
       { demoId: personalId, name: telegramName || `User ${telegramId}`, occupation: "ผู้ใช้ Telegram", avatar: "👤" },
       { upsert: true }
     );
-
-    // ผูก Telegram ID กับบัญชีส่วนตัว
     await registerTelegramUser(telegramId, telegramName, personalId);
 
     await sendTelegram(chatId,
       `🏡 สวัสดี *${telegramName}*!\n\n` +
       `ยินดีต้อนรับสู่ *บัญชีครัวเรือน*\n` +
-      `ระบบสร้างบัญชีส่วนตัวให้คุณแล้ว!\n` +
-      `ข้อมูลของคุณแยกเฉพาะ ไม่ปนกับใคร\n\n` +
+      `ระบบสร้างบัญชีส่วนตัวให้คุณแล้ว!\n\n` +
       `ลองพิมพ์:\n` +
       `📥 "ขายข้าว 3000 บาท"\n` +
       `📤 "ซื้อปุ๋ย 500 บาท"\n` +
       `📊 "สรุปยอด"\n` +
       `📷 ส่งรูป slip ได้เลย!\n\n` +
-      `พิมพ์ /demo ถ้าอยากดูข้อมูลตัวอย่าง`
+      `💡 ถ้าเชื่อมจากเว็บ → ข้อมูลจะเชื่อมกันอัตโนมัติ`
     );
     return;
   }
