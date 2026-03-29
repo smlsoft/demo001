@@ -73,13 +73,43 @@ async function processUpdate(update: any) {
   if (!message.text) return;
   const text = message.text.trim();
 
-  // /start
+  // /start — สร้างบัญชีส่วนตัวอัตโนมัติจาก Telegram account
   if (text === "/start") {
+    const personalId = `telegram-${telegramId}`;
+
+    // สร้าง/อัพเดท user ใน DB
+    const { User } = await import("@/lib/models/User");
+    await User.findOneAndUpdate(
+      { demoId: personalId },
+      { demoId: personalId, name: telegramName || `User ${telegramId}`, occupation: "ผู้ใช้ Telegram", avatar: "👤" },
+      { upsert: true }
+    );
+
+    // ผูก Telegram ID กับบัญชีส่วนตัว
+    await registerTelegramUser(telegramId, telegramName, personalId);
+
+    await sendTelegram(chatId,
+      `🏡 สวัสดี *${telegramName}*!\n\n` +
+      `ยินดีต้อนรับสู่ *บัญชีครัวเรือน*\n` +
+      `ระบบสร้างบัญชีส่วนตัวให้คุณแล้ว!\n` +
+      `ข้อมูลของคุณแยกเฉพาะ ไม่ปนกับใคร\n\n` +
+      `ลองพิมพ์:\n` +
+      `📥 "ขายข้าว 3000 บาท"\n` +
+      `📤 "ซื้อปุ๋ย 500 บาท"\n` +
+      `📊 "สรุปยอด"\n` +
+      `📷 ส่งรูป slip ได้เลย!\n\n` +
+      `พิมพ์ /demo ถ้าอยากดูข้อมูลตัวอย่าง`
+    );
+    return;
+  }
+
+  // /demo — เลือกดูข้อมูล demo (ของเดิม)
+  if (text === "/demo") {
     const keyboard = DEMO_USERS.map((u) => [
       { text: `${u.avatar} ${u.name} (${u.occupation})`, callback_data: `login:${u.id}` },
     ]);
     await sendTelegram(chatId,
-      `🏡 สวัสดี ${telegramName}!\n\nยินดีต้อนรับสู่ *บัญชีครัวเรือน*\nระบบบันทึกรายรับ-รายจ่ายอัจฉริยะ\n\nกดเลือกบัญชีเพื่อเข้าใช้:`,
+      `📋 เลือกบัญชีตัวอย่างเพื่อดูข้อมูล Demo:\n(พิมพ์ /start เพื่อกลับบัญชีส่วนตัว)`,
       { inline_keyboard: keyboard }
     );
     return;
