@@ -5,6 +5,9 @@ export interface IUser extends Document {
   name: string;
   occupation: string;
   avatar: string;
+  email?: string;
+  picture?: string;
+  googleId?: string;
   createdAt: Date;
 }
 
@@ -13,7 +16,10 @@ const UserSchema = new Schema<IUser>(
     demoId: { type: String, required: true, unique: true, index: true },
     name: { type: String, required: true },
     occupation: { type: String, required: true },
-    avatar: { type: String, required: true },
+    avatar: { type: String, default: "👤" },
+    email: { type: String, default: "" },
+    picture: { type: String, default: "" },
+    googleId: { type: String, default: "" },
   },
   { timestamps: true }
 );

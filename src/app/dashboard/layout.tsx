@@ -2,12 +2,21 @@ import { redirect } from "next/navigation";
 import { getSessionUserId } from "@/lib/session";
 import { DEMO_USERS } from "@/lib/demo-users";
 import { NavBar } from "@/components/NavBar";
+import { connectDb } from "@/lib/db";
+import { User } from "@/lib/models/User";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const userId = await getSessionUserId();
   if (!userId) redirect("/login");
-  const user = DEMO_USERS.find((u) => u.id === userId);
-  if (!user) redirect("/login");
+
+  // ลองหาจาก demo users ก่อน ถ้าไม่เจอดูจาก DB (Google user)
+  let user = DEMO_USERS.find((u) => u.id === userId);
+  if (!user) {
+    await connectDb();
+    const dbUser = await User.findOne({ demoId: userId }).lean() as any;
+    if (!dbUser) redirect("/login");
+    user = { id: dbUser.demoId, name: dbUser.name, occupation: dbUser.occupation || "ผู้ใช้ Google", avatar: dbUser.avatar || "👤" };
+  }
 
   return (
     <div className="min-h-screen dashboard-layout" style={{ background: "var(--bg)" }}>
