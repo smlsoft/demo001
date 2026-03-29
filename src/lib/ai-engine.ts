@@ -153,6 +153,7 @@ async function buildSystemPrompt(userId: string) {
 - พูดสุภาพ อบอุ่น เหมือนคนใกล้ชิดที่ห่วงใย
 - ให้คำแนะนำเรื่องการเงินเชิงรุก เช่น เตือนถ้ารายจ่ายเยอะ แนะนำวิธีออม
 - ถ้างบประมาณหมวดไหนใกล้เต็มหรือเกิน ให้เตือนเจ้านายด้วย
+- สำคัญ: ห้ามคิดเลขเรื่องเงินเอง ถ้าถามเรื่องยอดเงิน ให้ใช้ข้อมูลด้านล่างเท่านั้น ถ้าไม่มีข้อมูลให้บอกว่า "ลองพิมพ์ สรุปยอด เพื่อดูข้อมูลล่าสุดค่ะ"
 - ถ้าหนี้ใกล้ถึงกำหนดจ่าย ให้เตือนด้วย
 - ถ้าเป้าออมใกล้ถึงเป้า ให้ให้กำลังใจ
 
@@ -213,8 +214,8 @@ export async function processMessage(
     await PendingTx.deleteOne({ _id: pending._id });
   }
 
-  // 1. สรุปยอด
-  if (/สรุป|รายงาน|ยอด|เหลือเท่าไ|คงเหลือ|เงินเท่าไ/.test(msg)) {
+  // 1. สรุปยอด — ดึงจาก DB จริงเท่านั้น
+  if (/สรุป|รายงาน|ยอด|เหลือเท่าไ|คงเหลือ|เงินเท่าไ|มีเงิน|เงินเหลือ|รวมทั้งหมด|ทั้งหมดเท่าไ|รายรับรวม|รายจ่ายรวม|เท่าไหร่|กี่บาท/.test(msg)) {
     const [inc, exp] = await Promise.all([
       Transaction.aggregate([{ $match: { userId, type: "income" } }, { $group: { _id: null, total: { $sum: "$amount" } } }]),
       Transaction.aggregate([{ $match: { userId, type: "expense" } }, { $group: { _id: null, total: { $sum: "$amount" } } }]),
@@ -250,6 +251,23 @@ export async function processMessage(
       reply: `บันทึกแล้ว!\n${typeLabel}: ${tx.description}\nจำนวน: ${tx.amount.toLocaleString()} บาท\nหมวด: ${tx.category}\nวันที่: ${today}`,
       action: "saved",
       transaction: { id: saved._id, date: today, ...tx },
+    };
+  }
+
+  // 3.5 ถามเรื่องเงิน/บัญชี → ดึง DB ตอบ ไม่ให้ AI ตอบมั่ว
+  if (/เงิน|บัญชี|ออม|หนี้|งบ|budget|income|expense|saving/.test(msg) && /เท่าไ|กี่|มาก|น้อย|พอ|เหลือ|ใช้ไป|ได้เท่า/.test(msg)) {
+    const [inc, exp] = await Promise.all([
+      Transaction.aggregate([{ $match: { userId, type: "income" } }, { $group: { _id: null, total: { $sum: "$amount" } } }]),
+      Transaction.aggregate([{ $match: { userId, type: "expense" } }, { $group: { _id: null, total: { $sum: "$amount" } } }]),
+    ]);
+    const totalIncome = inc[0]?.total || 0;
+    const totalExpense = exp[0]?.total || 0;
+    const balance = totalIncome - totalExpense;
+    const savingRate = totalIncome > 0 ? Math.round(((totalIncome - totalExpense) / totalIncome) * 100) : 0;
+
+    return {
+      reply: `📊 ข้อมูลจากฐานข้อมูล (realtime):\n\n📥 รายรับรวม: ${totalIncome.toLocaleString()} บาท\n📤 รายจ่ายรวม: ${totalExpense.toLocaleString()} บาท\n💰 คงเหลือ: ${balance.toLocaleString()} บาท\n📈 อัตราออม: ${savingRate}%${balance > 0 ? `\n\n💡 แนะนำ: ลองแบ่งออม ${Math.round(balance * 0.3).toLocaleString()} บาท (30%)` : balance < 0 ? `\n\n⚠️ ระวัง: รายจ่ายเกินรายรับ ${Math.abs(balance).toLocaleString()} บาท` : ""}`,
+      action: "summary_realtime",
     };
   }
 
