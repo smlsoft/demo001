@@ -183,7 +183,21 @@ async function processUpdate(update: any) {
   // ประมวลผลพร้อม timeout
   try {
     const result = await withTimeout(handleChat(text, userId), MAX_PROCESS_TIME);
-    await sendTelegram(chatId, result.reply);
+
+    // ถ้ามี pending tx (ไม่ชัดว่ารายรับ/รายจ่าย) → ส่งปุ่มกด
+    if (result.action === "vision_financial" || result.action === "clarify") {
+      await sendTelegram(chatId, result.reply, {
+        inline_keyboard: [
+          [
+            { text: "📥 รายรับ", callback_data: "confirm:income" },
+            { text: "📤 รายจ่าย", callback_data: "confirm:expense" },
+            { text: "❌ ยกเลิก", callback_data: "confirm:cancel" },
+          ],
+        ],
+      });
+    } else {
+      await sendTelegram(chatId, result.reply);
+    }
   } catch (err: any) {
     console.error("[Telegram] chat error:", err?.message);
     await sendTelegram(chatId, `ขออภัยค่ะ ระบบขัดข้องชั่วคราว ลองพิมพ์ใหม่อีกครั้งนะคะ`);
@@ -197,6 +211,27 @@ async function handleCallback(cb: any) {
   const chatId = cb.message?.chat?.id;
   const telegramId = cb.from.id;
   const name = cb.from.first_name || "";
+
+  // === ยืนยัน รายรับ/รายจ่าย/ยกเลิก ===
+  if (data.startsWith("confirm:") && chatId) {
+    const userId = await getTelegramUserId(telegramId);
+    if (!userId) {
+      await sendTelegram(chatId, `กรุณากด /start ก่อนนะคะ`);
+    } else {
+      const choice = data.replace("confirm:", "");
+      let msg = "";
+      if (choice === "income") msg = "รายรับ";
+      else if (choice === "expense") msg = "รายจ่าย";
+      else msg = "ยกเลิก";
+
+      try {
+        const result = await withTimeout(handleChat(msg, userId), MAX_PROCESS_TIME);
+        await sendTelegram(chatId, result.reply);
+      } catch {
+        await sendTelegram(chatId, `เกิดข้อผิดพลาด ลองใหม่`);
+      }
+    }
+  }
 
   if (data.startsWith("login:") && chatId) {
     const demoId = data.replace("login:", "");

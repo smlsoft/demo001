@@ -37,8 +37,8 @@ function parseTransaction(msg: string) {
   const amount = parseFloat(amountMatch[1].replace(/,/g, ""));
   if (amount <= 0 || amount > 10000000) return null; // จำกัด 10 ล้านบาท
 
-  const incomeKw = ["ขาย", "ได้เงิน", "รับเงิน", "เงินเดือน", "ค่าจ้าง", "รับจ้าง", "สวัสดิการ", "เงินช่วย", "รายได้", "ปันผล"];
-  const expenseKw = ["ซื้อ", "จ่าย", "ค่า", "ซ่อม", "ทำบุญ", "บริจาค", "เสีย"];
+  const incomeKw = ["ขาย", "ได้เงิน", "รับเงิน", "เงินเดือน", "ค่าจ้าง", "รับจ้าง", "สวัสดิการ", "เงินช่วย", "รายได้", "ปันผล", "ให้เงิน", "ให้มา", "เงินมา", "โอนมา", "โอนเข้า", "เข้าบัญชี", "คืนเงิน", "ได้มา", "รับมา", "เงินเข้า", "โบนัส", "ทิป", "ของขวัญ"];
+  const expenseKw = ["ซื้อ", "จ่าย", "ค่า", "ซ่อม", "ทำบุญ", "บริจาค", "เสีย", "โอนไป", "โอนออก", "จ่ายค่า", "จ่ายเงิน", "เสียเงิน", "หมดไป", "ใช้จ่าย"];
 
   const isIncome = incomeKw.some((k) => msg.includes(k));
   const isExpense = expenseKw.some((k) => msg.includes(k));
@@ -274,14 +274,40 @@ export async function processMessage(
     };
   }
 
-  // 4. มีตัวเลขแต่ไม่ชัดเจน
+  // 4. มีตัวเลข → ส่ง AI วิเคราะห์ว่ารายรับ/รายจ่าย แล้วให้ user ยืนยัน
   if (/\d+/.test(msg)) {
-    const m = msg.match(/(\d[\d,]*)/);
+    const m = msg.match(/(\d[\d,]*(?:\.\d+)?)/);
     if (m) {
-      return {
-        reply: `เห็นจำนวน ${m[1]} บาท แต่ไม่แน่ใจว่าเป็นรายรับหรือรายจ่าย\n\nลองพิมพ์:\n"ขายข้าว ${m[1]} บาท" (รายรับ)\n"ซื้อปุ๋ย ${m[1]} บาท" (รายจ่าย)`,
-        action: "clarify",
-      };
+      const amount = parseFloat(m[1].replace(/,/g, ""));
+      if (amount > 0 && amount <= 10000000) {
+        const desc = msg.replace(/(\d[\d,]*(?:\.\d+)?)\s*(?:บาท)?/g, "").replace(/\s+/g, " ").trim() || msg;
+
+        // ให้ AI วิเคราะห์ว่าน่าจะเป็นรายรับหรือรายจ่าย
+        let suggestedType: "income" | "expense" | "unknown" = "unknown";
+        let aiSuggestion = "";
+        try {
+          const classifyResult = await askAI(
+            `ข้อความนี้เป็นรายรับหรือรายจ่าย? ตอบแค่คำเดียว: "income" หรือ "expense" หรือ "unknown"\nข้อความ: "${msg}"`,
+            "ตอบแค่คำเดียว: income หรือ expense หรือ unknown",
+            []
+          );
+          if (classifyResult?.reply) {
+            const r = classifyResult.reply.toLowerCase().trim();
+            if (r.includes("income")) { suggestedType = "income"; aiSuggestion = "📥 AI แนะนำ: น่าจะเป็น *รายรับ*"; }
+            else if (r.includes("expense")) { suggestedType = "expense"; aiSuggestion = "📤 AI แนะนำ: น่าจะเป็น *รายจ่าย*"; }
+          }
+        } catch {}
+
+        // สร้าง pending tx
+        await PendingTx.deleteMany({ userId });
+        await PendingTx.create({ userId, amount, description: desc, suggestedType });
+
+        const typeText = suggestedType === "income" ? "รายรับ" : suggestedType === "expense" ? "รายจ่าย" : "";
+        return {
+          reply: `💰 ${desc} ${amount.toLocaleString()} บาท\n${aiSuggestion ? aiSuggestion + "\n" : ""}\nกดเลือก: รายรับ / รายจ่าย / ยกเลิก`,
+          action: "vision_financial",
+        };
+      }
     }
   }
 
