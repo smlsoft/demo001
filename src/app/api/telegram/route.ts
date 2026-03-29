@@ -4,6 +4,8 @@ import { getTelegramUserId, registerTelegramUser } from "@/lib/telegram-users";
 import { connectDb } from "@/lib/db";
 import { seedDemoData } from "@/lib/seed";
 import { DEMO_USERS } from "@/lib/demo-users";
+import { FileDoc } from "@/lib/models/FileDoc";
+import { getR2SignedUrl } from "@/lib/r2";
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || "";
 
@@ -177,6 +179,39 @@ async function processUpdate(update: any) {
     return;
   }
 
+  // === ขอดูรูป/slip/เอกสาร → ดึงจาก DB แล้วส่งรูปกลับ ===
+  if (/ดูรูป|ดูสลิป|ดู slip|ขอดูรูป|ขอดู slip|ดูเอกสาร|ดูใบเสร็จ|แสดงรูป|ส่งรูป|slip ล่าสุด|รูปล่าสุด/.test(text)) {
+    await sendTyping(chatId);
+    try {
+      const files = await FileDoc.find({ userId, mimeType: { $regex: /^image/ } })
+        .sort({ createdAt: -1 })
+        .limit(3)
+        .lean();
+
+      if (files.length === 0) {
+        await sendTelegram(chatId, "📁 ยังไม่มีรูปภาพในระบบค่ะ ลองส่งรูป slip มาให้น้องบัญชีดูได้เลย");
+        return;
+      }
+
+      await sendTelegram(chatId, `📸 พบ ${files.length} รูปล่าสุด กำลังส่งให้ดูค่ะ...`);
+
+      for (const file of files as any[]) {
+        try {
+          const url = await getR2SignedUrl(file.r2Key);
+          const caption = `📄 ${file.originalName}\n📁 ${file.category}\n📅 ${new Date(file.createdAt).toLocaleDateString("th-TH")}${file.description ? `\n📝 ${file.description}` : ""}`;
+          await sendPhotoUrl(chatId, url, caption);
+        } catch {
+          await sendTelegram(chatId, `❌ ส่งรูป ${file.originalName} ไม่ได้`);
+        }
+      }
+      return;
+    } catch (err: any) {
+      console.error("[Telegram] photo fetch error:", err?.message);
+      await sendTelegram(chatId, "เกิดข้อผิดพลาดในการดึงรูป ลองใหม่นะคะ");
+      return;
+    }
+  }
+
   // ส่ง typing indicator
   await sendTyping(chatId);
 
@@ -322,6 +357,27 @@ async function sendTelegram(chatId: number, text: string, replyMarkup?: any): Pr
     }
   } catch (err: any) {
     console.error("[Telegram] send error:", err?.message);
+  }
+}
+
+async function sendPhotoUrl(chatId: number, photoUrl: string, caption?: string): Promise<void> {
+  try {
+    const body: any = { chat_id: chatId, photo: photoUrl };
+    if (caption) body.caption = caption;
+
+    const res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(15000),
+    });
+
+    if (!res.ok) {
+      // ถ้าส่งรูปไม่ได้ (URL หมดอายุ/ผิด) → ส่ง link แทน
+      await sendTelegram(chatId, `🔗 ดูรูป: ${photoUrl}${caption ? `\n${caption}` : ""}`);
+    }
+  } catch (err: any) {
+    console.error("[Telegram] sendPhoto error:", err?.message);
   }
 }
 
