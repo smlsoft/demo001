@@ -217,8 +217,51 @@ export async function processMessage(
     await PendingTx.deleteOne({ _id: pending._id });
   }
 
-  // 1. สรุปยอด — ดึงจาก DB จริงเท่านั้น (ครอบคลุมทุกรูปแบบคำถามเรื่องเงิน)
-  if (/สรุป|รายงาน|ยอด|เหลือเท่าไ|คงเหลือ|เงินเท่าไ|มีเงิน|เงินเหลือ|รวมทั้งหมด|ทั้งหมดเท่าไ|รายรับรวม|รายจ่ายรวม|เท่าไหร่|กี่บาท|เงินได้|ได้เงิน|ใช้ไป|จ่ายไป|รับมา|เงินรับ|เงินจ่าย|balance|total|รวมรายรับ|รวมรายจ่าย/.test(msg)) {
+  // 1. ส่ง AI วิเคราะห์ว่า user ต้องการทำอะไร (intent classification)
+  // AI จะตอบ JSON: {intent, amount, description, type, category}
+  let aiIntent: any = null;
+  try {
+    const classifyResult = await askAI(
+      `วิเคราะห์ข้อความนี้แล้วตอบเป็น JSON เท่านั้น (ไม่ต้องมี markdown):
+{
+  "intent": "record" หรือ "summary" หรือ "list" หรือ "delete" หรือ "chat",
+  "amount": ตัวเลขจำนวนเงิน (ถ้ามี, ไม่มีใส่ 0),
+  "description": "คำอธิบายรายการสั้นๆ",
+  "type": "income" หรือ "expense" หรือ "unknown",
+  "category": "หมวดหมู่ที่เหมาะสม เช่น รายได้อาชีพหลัก, อาหาร/ของใช้, ค่าประกอบอาชีพ, งานสังคม, การศึกษา, พักผ่อน",
+  "confidence": "high" หรือ "low"
+}
+
+กฎ:
+- intent="record": ต้องการบันทึกรายรับหรือรายจ่าย (มีจำนวนเงิน)
+- intent="summary": ต้องการดูสรุปยอด/ยอดคงเหลือ/รายรับรวม/รายจ่ายรวม
+- intent="list": ต้องการดูรายการล่าสุด/ประวัติ
+- intent="delete": ต้องการลบ/ยกเลิกรายการ
+- intent="chat": คุยทั่วไป ไม่เกี่ยวกับบัญชี
+- type: ถ้าเป็นเงินเข้า/รับ/ขาย/ให้มา = "income", ถ้าจ่าย/ซื้อ/ค่า = "expense"
+- confidence="low": ถ้าไม่แน่ใจว่ารายรับหรือรายจ่าย
+
+ข้อความ: "${msg}"`,
+      "ตอบเป็น JSON เท่านั้น",
+      []
+    );
+    if (classifyResult?.reply) {
+      const jsonMatch = classifyResult.reply.match(/\{[\s\S]*\}/);
+      if (jsonMatch) aiIntent = JSON.parse(jsonMatch[0]);
+    }
+  } catch {}
+
+  // Fallback: ถ้า AI ไม่ตอบ ใช้ regex พื้นฐาน
+  if (!aiIntent) {
+    if (/สรุป|ยอด|เหลือเท่าไ|คงเหลือ|เงินเท่าไ/.test(msg)) aiIntent = { intent: "summary" };
+    else if (/รายการ|ล่าสุด|ดูบัญชี|ประวัติ/.test(msg)) aiIntent = { intent: "list" };
+    else aiIntent = { intent: "chat" };
+  }
+
+  // 2. ดำเนินการตาม intent
+
+  // === สรุปยอด → ดึง DB จริงเท่านั้น ===
+  if (aiIntent.intent === "summary") {
     const [inc, exp] = await Promise.all([
       Transaction.aggregate([{ $match: { userId, type: "income" } }, { $group: { _id: null, total: { $sum: "$amount" } } }]),
       Transaction.aggregate([{ $match: { userId, type: "expense" } }, { $group: { _id: null, total: { $sum: "$amount" } } }]),
@@ -231,84 +274,58 @@ export async function processMessage(
     else if (balance < 0) advice = `\n\nระวัง: รายจ่ายเกินรายรับ ${Math.abs(balance).toLocaleString()} บาท`;
 
     return {
-      reply: `สรุปบัญชีของคุณ:\nรายรับรวม: ${totalIncome.toLocaleString()} บาท\nรายจ่ายรวม: ${totalExpense.toLocaleString()} บาท\nคงเหลือ: ${balance.toLocaleString()} บาท${advice}`,
+      reply: `📊 สรุปบัญชี (จากฐานข้อมูล):\n📥 รายรับรวม: ${totalIncome.toLocaleString()} บาท\n📤 รายจ่ายรวม: ${totalExpense.toLocaleString()} บาท\n💰 คงเหลือ: ${balance.toLocaleString()} บาท${advice}`,
       action: "summary",
     };
   }
 
-  // 2. ดูรายการ
-  if (/รายการ|ล่าสุด|ดูบัญชี|ประวัติ/.test(msg)) {
+  // === ดูรายการ → ดึง DB ===
+  if (aiIntent.intent === "list") {
     const recent = await Transaction.find({ userId }).sort({ createdAt: -1 }).limit(5).lean();
     if (recent.length === 0) return { reply: "ยังไม่มีรายการ ลองพิมพ์ 'ขายข้าว 3000 บาท' เพื่อเริ่มบันทึก!", action: "list" };
-    const list = recent.map((t: any) => `${t.type === "income" ? "รายรับ" : "รายจ่าย"}: ${t.description} - ${t.amount.toLocaleString()} บาท (${t.date})`).join("\n");
-    return { reply: `รายการล่าสุด:\n${list}`, action: "list" };
+    const list = recent.map((t: any) => `${t.type === "income" ? "📥" : "📤"} ${t.description} - ${t.amount.toLocaleString()} บาท (${t.date})`).join("\n");
+    return { reply: `📋 รายการล่าสุด:\n${list}`, action: "list" };
   }
 
-  // 3. Transaction parsing (built-in - แม่นยำ)
-  const tx = parseTransaction(msg);
-  if (tx) {
-    const today = toBuddhistYear(new Date());
-    const saved = await Transaction.create({ userId, date: today, description: tx.description, amount: tx.amount, type: tx.type, category: tx.category });
-    const typeLabel = tx.type === "income" ? "รายรับ" : "รายจ่าย";
-    return {
-      reply: `บันทึกแล้ว!\n${typeLabel}: ${tx.description}\nจำนวน: ${tx.amount.toLocaleString()} บาท\nหมวด: ${tx.category}\nวันที่: ${today}`,
-      action: "saved",
-      transaction: { id: saved._id, date: today, ...tx },
-    };
+  // === ลบรายการ → ดึง DB + แสดงรายการล่าสุด ===
+  if (aiIntent.intent === "delete") {
+    const recent = await Transaction.find({ userId }).sort({ createdAt: -1 }).limit(5).lean();
+    if (recent.length === 0) return { reply: "ยังไม่มีรายการที่จะลบค่ะ", action: "list" };
+    const list = recent.map((t: any, i: number) => `${i + 1}. ${t.type === "income" ? "📥" : "📤"} ${t.description} - ${t.amount.toLocaleString()} บาท`).join("\n");
+    return { reply: `📋 รายการล่าสุด:\n${list}\n\nกรุณาไปที่หน้า "บันทึก" เพื่อลบรายการค่ะ`, action: "list" };
   }
 
-  // 3.5 ถามเรื่องเงิน/บัญชี → ดึง DB ตอบ ไม่ให้ AI ตอบมั่ว (ครอบคลุมทุกรูปแบบ)
-  if (/เงิน|บัญชี|ออม|หนี้|งบ|budget|income|expense|saving|ค่าใช้จ่าย|รายได้|กำไร|ขาดทุน|เก็บเงิน/.test(msg) && /เท่าไ|กี่|มาก|น้อย|พอ|เหลือ|ใช้ไป|ได้เท่า|ทั้งหมด|รวม|ดู|เช็ค|ตรวจ|check/.test(msg)) {
-    const [inc, exp] = await Promise.all([
-      Transaction.aggregate([{ $match: { userId, type: "income" } }, { $group: { _id: null, total: { $sum: "$amount" } } }]),
-      Transaction.aggregate([{ $match: { userId, type: "expense" } }, { $group: { _id: null, total: { $sum: "$amount" } } }]),
-    ]);
-    const totalIncome = inc[0]?.total || 0;
-    const totalExpense = exp[0]?.total || 0;
-    const balance = totalIncome - totalExpense;
-    const savingRate = totalIncome > 0 ? Math.round(((totalIncome - totalExpense) / totalIncome) * 100) : 0;
+  // === บันทึกรายการ → AI วิเคราะห์แล้ว ให้ user ยืนยัน ===
+  if (aiIntent.intent === "record" && aiIntent.amount > 0 && aiIntent.amount <= 10000000) {
+    const desc = aiIntent.description || msg;
+    const amount = aiIntent.amount;
+    const suggestedType = aiIntent.type || "unknown";
+    const category = aiIntent.category || (suggestedType === "income" ? "รายได้อาชีพหลัก" : "อาหาร/ของใช้");
 
-    return {
-      reply: `📊 ข้อมูลจากฐานข้อมูล (realtime):\n\n📥 รายรับรวม: ${totalIncome.toLocaleString()} บาท\n📤 รายจ่ายรวม: ${totalExpense.toLocaleString()} บาท\n💰 คงเหลือ: ${balance.toLocaleString()} บาท\n📈 อัตราออม: ${savingRate}%${balance > 0 ? `\n\n💡 แนะนำ: ลองแบ่งออม ${Math.round(balance * 0.3).toLocaleString()} บาท (30%)` : balance < 0 ? `\n\n⚠️ ระวัง: รายจ่ายเกินรายรับ ${Math.abs(balance).toLocaleString()} บาท` : ""}`,
-      action: "summary_realtime",
-    };
-  }
-
-  // 4. มีตัวเลข → ส่ง AI วิเคราะห์ว่ารายรับ/รายจ่าย แล้วให้ user ยืนยัน
-  if (/\d+/.test(msg)) {
-    const m = msg.match(/(\d[\d,]*(?:\.\d+)?)/);
-    if (m) {
-      const amount = parseFloat(m[1].replace(/,/g, ""));
-      if (amount > 0 && amount <= 10000000) {
-        const desc = msg.replace(/(\d[\d,]*(?:\.\d+)?)\s*(?:บาท)?/g, "").replace(/\s+/g, " ").trim() || msg;
-
-        // ให้ AI วิเคราะห์ว่าน่าจะเป็นรายรับหรือรายจ่าย
-        let suggestedType: "income" | "expense" | "unknown" = "unknown";
-        let aiSuggestion = "";
-        try {
-          const classifyResult = await askAI(
-            `ข้อความนี้เป็นรายรับหรือรายจ่าย? ตอบแค่คำเดียว: "income" หรือ "expense" หรือ "unknown"\nข้อความ: "${msg}"`,
-            "ตอบแค่คำเดียว: income หรือ expense หรือ unknown",
-            []
-          );
-          if (classifyResult?.reply) {
-            const r = classifyResult.reply.toLowerCase().trim();
-            if (r.includes("income")) { suggestedType = "income"; aiSuggestion = "📥 AI แนะนำ: น่าจะเป็น *รายรับ*"; }
-            else if (r.includes("expense")) { suggestedType = "expense"; aiSuggestion = "📤 AI แนะนำ: น่าจะเป็น *รายจ่าย*"; }
-          }
-        } catch {}
-
-        // สร้าง pending tx
-        await PendingTx.deleteMany({ userId });
-        await PendingTx.create({ userId, amount, description: desc, suggestedType });
-
-        const typeText = suggestedType === "income" ? "รายรับ" : suggestedType === "expense" ? "รายจ่าย" : "";
-        return {
-          reply: `💰 ${desc} ${amount.toLocaleString()} บาท\n${aiSuggestion ? aiSuggestion + "\n" : ""}\nกดเลือก: รายรับ / รายจ่าย / ยกเลิก`,
-          action: "vision_financial",
-        };
-      }
+    // ถ้า AI มั่นใจสูง → บันทึกเลย
+    if (aiIntent.confidence === "high" && suggestedType !== "unknown") {
+      const today = toBuddhistYear(new Date());
+      const saved = await Transaction.create({ userId, date: today, description: desc, amount, type: suggestedType, category });
+      const typeLabel = suggestedType === "income" ? "📥 รายรับ" : "📤 รายจ่าย";
+      return {
+        reply: `✅ บันทึกแล้ว!\n${typeLabel}: ${desc}\n💰 จำนวน: ${amount.toLocaleString()} บาท\n📁 หมวด: ${category}\n📅 วันที่: ${today}`,
+        action: "saved",
+        transaction: { id: saved._id, date: today, description: desc, amount, type: suggestedType, category },
+      };
     }
+
+    // ถ้า AI ไม่มั่นใจ → สร้าง pending + ถาม user
+    await PendingTx.deleteMany({ userId });
+    await PendingTx.create({ userId, amount, description: desc, suggestedType });
+
+    const suggestion = suggestedType === "income" ? "📥 AI แนะนำ: น่าจะเป็น *รายรับ*"
+      : suggestedType === "expense" ? "📤 AI แนะนำ: น่าจะเป็น *รายจ่าย*"
+      : "❓ AI ไม่แน่ใจว่าเป็นรายรับหรือรายจ่าย";
+
+    return {
+      reply: `💰 ${desc} ${amount.toLocaleString()} บาท\n${suggestion}\n\nกดเลือก: รายรับ / รายจ่าย / ยกเลิก`,
+      action: "vision_financial",
+    };
   }
 
   // 5. AI (OpenClaw → OpenRouter → Fallback)
