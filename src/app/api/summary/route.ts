@@ -21,68 +21,64 @@ export async function GET(req: NextRequest) {
     filter.date = { $regex: `^${month}` };
   }
 
-  const [incomeResult, expenseResult, byCategory, daily, incomeByCategory, topItems] = await Promise.all([
-    Transaction.aggregate([
-      { $match: { ...filter, type: "income" } },
-      { $group: { _id: null, total: { $sum: "$amount" }, count: { $sum: 1 } } },
-    ]),
-    Transaction.aggregate([
-      { $match: { ...filter, type: "expense" } },
-      { $group: { _id: null, total: { $sum: "$amount" }, count: { $sum: 1 } } },
-    ]),
-    Transaction.aggregate([
-      { $match: filter },
-      { $group: { _id: { category: "$category", type: "$type" }, total: { $sum: "$amount" }, count: { $sum: 1 } } },
-      { $sort: { total: -1 } },
-    ]),
-    Transaction.aggregate([
-      { $match: filter },
-      { $group: { _id: { date: "$date", type: "$type" }, total: { $sum: "$amount" } } },
-      { $sort: { "_id.date": 1 } },
-    ]),
-    // รายรับแยกหมวด
-    Transaction.aggregate([
-      { $match: { ...filter, type: "income" } },
-      { $group: { _id: "$category", total: { $sum: "$amount" }, count: { $sum: 1 } } },
-      { $sort: { total: -1 } },
-    ]),
-    // รายการยอดสูงสุด
-    Transaction.aggregate([
-      { $match: filter },
-      { $group: { _id: { desc: "$description", type: "$type" }, total: { $sum: "$amount" }, count: { $sum: 1 }, avg: { $avg: "$amount" } } },
-      { $sort: { total: -1 } },
-      { $limit: 10 },
-    ]),
+  // ใช้ $facet รวมทุก aggregation เป็น 1 query เดียว → ลด DB round-trips 6→1
+  const [result] = await Transaction.aggregate([
+    { $match: filter },
+    {
+      $facet: {
+        totals: [
+          { $group: { _id: "$type", total: { $sum: "$amount" }, count: { $sum: 1 } } },
+        ],
+        byCategory: [
+          { $group: { _id: { category: "$category", type: "$type" }, total: { $sum: "$amount" }, count: { $sum: 1 } } },
+          { $sort: { total: -1 } },
+        ],
+        daily: [
+          { $group: { _id: { date: "$date", type: "$type" }, total: { $sum: "$amount" } } },
+          { $sort: { "_id.date": 1 } },
+        ],
+        incomeByCategory: [
+          { $match: { type: "income" } },
+          { $group: { _id: "$category", total: { $sum: "$amount" }, count: { $sum: 1 } } },
+          { $sort: { total: -1 } },
+        ],
+        topItems: [
+          { $group: { _id: { desc: "$description", type: "$type" }, total: { $sum: "$amount" }, count: { $sum: 1 }, avg: { $avg: "$amount" } } },
+          { $sort: { total: -1 } },
+          { $limit: 10 },
+        ],
+      },
+    },
   ]);
 
-  const totalIncome = incomeResult[0]?.total || 0;
-  const totalExpense = expenseResult[0]?.total || 0;
-  const incomeCount = incomeResult[0]?.count || 0;
-  const expenseCount = expenseResult[0]?.count || 0;
+  const incomeTotal = result.totals.find((t: any) => t._id === "income");
+  const expenseTotal = result.totals.find((t: any) => t._id === "expense");
+  const totalIncome = incomeTotal?.total || 0;
+  const totalExpense = expenseTotal?.total || 0;
 
   return NextResponse.json({
     totalIncome,
     totalExpense,
     balance: totalIncome - totalExpense,
-    incomeCount,
-    expenseCount,
-    byCategory: byCategory.map((c: any) => ({
+    incomeCount: incomeTotal?.count || 0,
+    expenseCount: expenseTotal?.count || 0,
+    byCategory: result.byCategory.map((c: any) => ({
       category: c._id.category,
       type: c._id.type,
       total: c.total,
       count: c.count,
     })),
-    daily: daily.map((d: any) => ({
+    daily: result.daily.map((d: any) => ({
       date: d._id.date,
       type: d._id.type,
       total: d.total,
     })),
-    incomeByCategory: incomeByCategory.map((c: any) => ({
+    incomeByCategory: result.incomeByCategory.map((c: any) => ({
       category: c._id,
       total: c.total,
       count: c.count,
     })),
-    topItems: topItems.map((t: any) => ({
+    topItems: result.topItems.map((t: any) => ({
       description: t._id.desc,
       type: t._id.type,
       total: t.total,

@@ -28,6 +28,10 @@ export async function connectDb() {
       .connect(MONGODB_URI, {
         serverSelectionTimeoutMS: 8000,
         socketTimeoutMS: 10000,
+        maxPoolSize: 20,          // รองรับ concurrent connections มากขึ้น (default 10)
+        minPoolSize: 5,           // เก็บ connection พร้อมใช้เสมอ
+        maxIdleTimeMS: 30000,     // ปิด idle connections หลัง 30s
+        compressors: ["zstd", "snappy"], // บีบอัดข้อมูลระหว่าง app-db
       })
       .then((m) => m)
       .catch((err: any) => {

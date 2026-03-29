@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
+import { VoiceInput } from "@/components/VoiceInput";
 
 interface Message {
   _id?: string;
@@ -135,7 +136,7 @@ export default function AiChatPage() {
         <div ref={endRef} />
       </div>
 
-      {/* Input + ปุ่มส่งรูป */}
+      {/* Input + ปุ่มส่งรูป + ปุ่มพูด */}
       <form onSubmit={send} className="flex gap-2 items-end">
         <input type="file" ref={fileRef} onChange={uploadPhoto} accept="image/*" className="hidden" />
         <button type="button" onClick={() => fileRef.current?.click()} disabled={sending}
@@ -143,10 +144,11 @@ export default function AiChatPage() {
           style={{ background: "var(--bg-input)", border: "1px solid var(--border)" }}>
           📷
         </button>
+        <VoiceInput onResult={useCallback((text: string) => setInput(text), [])} />
         <input type="text" value={input} onChange={(e) => setInput(e.target.value)} disabled={sending}
           className="flex-1 border rounded-xl px-4 py-3"
           style={{ background: "var(--bg-input)", borderColor: "var(--border)", color: "var(--text)" }}
-          placeholder="พิมพ์ข้อความ หรือกด 📷 ส่งรูป" />
+          placeholder="พิมพ์ หรือกด 🎤 พูด" />
         <button type="submit" disabled={sending || !input.trim()}
           className="px-5 py-3 rounded-xl text-white font-bold shrink-0"
           style={{ background: "var(--accent)", opacity: sending || !input.trim() ? 0.5 : 1 }}>

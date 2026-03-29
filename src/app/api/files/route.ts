@@ -5,13 +5,19 @@ import { getSessionUserId } from "@/lib/session";
 import { uploadToR2, deleteFromR2 } from "@/lib/r2";
 import { v4 as uuidv4 } from "uuid";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const userId = await getSessionUserId();
   if (!userId) return NextResponse.json({ error: "กรุณาเข้าสู่ระบบ" }, { status: 401 });
+
+  const { searchParams } = new URL(req.url);
+  const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "50")));
+  const page = Math.max(1, parseInt(searchParams.get("page") || "1"));
 
   await connectDb();
   const files = await FileDoc.find({ userId })
     .sort({ createdAt: -1 })
+    .skip((page - 1) * limit)
+    .limit(limit)
     .lean();
 
   return NextResponse.json(files);

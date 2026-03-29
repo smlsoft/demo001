@@ -72,10 +72,11 @@ async function compactHistory(userId: string): Promise<void> {
   const totalCount = await ChatMessage.countDocuments({ userId });
   if (totalCount <= COMPACT_THRESHOLD) return;
 
-  // ดึงข้อความเก่าที่จะสรุป (ทั้งหมดยกเว้น KEEP_RECENT ล่าสุด)
+  // ดึงข้อความเก่าที่จะสรุป (จำกัด 200 ข้อความ เพื่อไม่ให้ memory ล้น)
+  const maxCompact = Math.min(totalCount - KEEP_RECENT, 200);
   const oldMessages = await ChatMessage.find({ userId })
     .sort({ createdAt: 1 })
-    .limit(totalCount - KEEP_RECENT)
+    .limit(maxCompact)
     .lean();
 
   if (oldMessages.length === 0) return;

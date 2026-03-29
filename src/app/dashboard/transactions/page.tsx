@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { INCOME_CATEGORIES, EXPENSE_CATEGORIES, formatThaiDate, toBuddhistYear } from "@/lib/demo-users";
+import { VoiceInput } from "@/components/VoiceInput";
 
 interface Tx {
   _id: string;
@@ -24,8 +25,11 @@ export default function TransactionsPage() {
 
   async function load() {
     setLoading(true);
-    const res = await fetch("/api/transactions");
-    if (res.ok) setTxs(await res.json());
+    const res = await fetch("/api/transactions?limit=200");
+    if (res.ok) {
+      const json = await res.json();
+      setTxs(Array.isArray(json) ? json : json.data || []);
+    }
     setLoading(false);
   }
 
@@ -82,7 +86,10 @@ export default function TransactionsPage() {
               ))}
             </div>
             <input value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} className="w-full border rounded-xl px-4 py-3" placeholder="วันที่ (พ.ศ.)" />
-            <input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="w-full border rounded-xl px-4 py-3" placeholder="รายละเอียด เช่น ขายข้าว" required />
+            <div className="flex gap-2 items-center">
+              <input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="flex-1 border rounded-xl px-4 py-3" placeholder="รายละเอียด เช่น ขายข้าว" required />
+              <VoiceInput onResult={useCallback((text: string) => setForm((f) => ({ ...f, description: text })), [])} />
+            </div>
             <input type="number" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} className="w-full border rounded-xl px-4 py-3" placeholder="จำนวนเงิน (บาท)" required min="0" />
             <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} className="w-full border rounded-xl px-4 py-3" required>
               <option value="">-- เลือกหมวดหมู่ --</option>

@@ -112,6 +112,47 @@ input::placeholder, textarea::placeholder {
   }
 }
 
+/* ========== Voice Pulse Animation ========== */
+@keyframes pulse {
+  0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.4); }
+  70% { box-shadow: 0 0 0 12px rgba(220, 38, 38, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
+}
+
+/* ========== Progress Bar ========== */
+.progress-bar {
+  height: 12px;
+  border-radius: 6px;
+  background: var(--bg-input);
+  overflow: hidden;
+}
+.progress-bar-fill {
+  height: 100%;
+  border-radius: 6px;
+  transition: width 0.5s ease;
+}
+
+/* ========== Calendar Grid ========== */
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+.calendar-cell {
+  aspect-ratio: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.calendar-cell:hover {
+  background: var(--bg-input);
+}
+
 /* ========== Sidebar Layout (Desktop) ========== */
 @media (min-width: 1024px) {
   .dashboard-layout {

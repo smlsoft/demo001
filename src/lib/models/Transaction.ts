@@ -25,6 +25,9 @@ const TransactionSchema = new Schema<ITransaction>(
 );
 
 TransactionSchema.index({ userId: 1, date: -1 });
+// index สำหรับ aggregation group by type + category
+TransactionSchema.index({ userId: 1, type: 1, date: -1 });
+TransactionSchema.index({ userId: 1, type: 1, category: 1 });
 
 export const Transaction =
   mongoose.models.Transaction ||

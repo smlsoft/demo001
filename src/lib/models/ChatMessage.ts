@@ -18,6 +18,9 @@ const ChatMessageSchema = new Schema<IChatMessage>(
   { timestamps: true }
 );
 
+// compound index: ดึง chat history เรียงตามเวลา
+ChatMessageSchema.index({ userId: 1, createdAt: -1 });
+
 export const ChatMessage =
   mongoose.models.ChatMessage ||
   mongoose.model<IChatMessage>("ChatMessage", ChatMessageSchema);

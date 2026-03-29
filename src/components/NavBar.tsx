@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useTheme } from "@/lib/theme";
@@ -25,6 +26,20 @@ export function NavBar({ user }: Props) {
     { href: "/dashboard/ai-chat", label: "ถาม AI", icon: "🤖" },
     { href: "/dashboard/files", label: "เอกสาร", icon: "📁" },
   ];
+
+  const moreTabs = [
+    { href: "/dashboard/savings", label: "เป้าออม", icon: "🎯" },
+    { href: "/dashboard/budget", label: "งบประมาณ", icon: "💰" },
+    { href: "/dashboard/calendar", label: "ปฏิทิน", icon: "📅" },
+    { href: "/dashboard/reminders", label: "แจ้งเตือน", icon: "🔔" },
+    { href: "/dashboard/debts", label: "หนี้สิน", icon: "📋" },
+    { href: "/dashboard/groups", label: "กลุ่มออม", icon: "👥" },
+    { href: "/dashboard/achievements", label: "รางวัล", icon: "🏅" },
+    { href: "/dashboard/forecast", label: "พยากรณ์", icon: "🔮" },
+    { href: "/dashboard/telegram", label: "Telegram", icon: "📱" },
+  ];
+
+  const [showMore, setShowMore] = useState(false);
 
   return (
     <>
@@ -65,6 +80,27 @@ export function NavBar({ user }: Props) {
               </Link>
             );
           })}
+
+          <div className="pt-2 mt-2" style={{ borderTop: "1px solid var(--border)" }}>
+            <div className="px-4 py-1 text-xs font-bold" style={{ color: "var(--text-muted)" }}>เครื่องมือเพิ่มเติม</div>
+            {moreTabs.map((tab) => {
+              const active = pathname === tab.href;
+              return (
+                <Link
+                  key={tab.href}
+                  href={tab.href}
+                  className="flex items-center gap-3 px-4 py-2.5 rounded-xl transition-colors"
+                  style={{
+                    background: active ? "var(--accent-light)" : "transparent",
+                    color: active ? "var(--accent)" : "var(--text-sub)",
+                  }}
+                >
+                  <span className="text-lg">{tab.icon}</span>
+                  <span className="text-sm font-medium">{tab.label}</span>
+                </Link>
+              );
+            })}
+          </div>
         </nav>
 
         {/* ปุ่มล่าง */}
@@ -77,6 +113,13 @@ export function NavBar({ user }: Props) {
             <span className="text-xl">{theme === "light" ? "🌙" : "☀️"}</span>
             <span className="font-medium">{theme === "light" ? "โหมดมืด" : "โหมดสว่าง"}</span>
           </button>
+          <Link href="/"
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors"
+            style={{ background: "var(--bg-input)", color: "var(--text-sub)" }}
+          >
+            <span className="text-xl">🏠</span>
+            <span className="font-medium">หน้าแรก</span>
+          </Link>
           <button
             onClick={logout}
             className="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors"
@@ -140,8 +183,50 @@ export function NavBar({ user }: Props) {
               </Link>
             );
           })}
+          {/* ปุ่ม "เพิ่มเติม" */}
+          <button
+            onClick={() => setShowMore(!showMore)}
+            className="flex-1 flex flex-col items-center py-2 transition-colors"
+            style={{ color: showMore ? "var(--accent)" : "var(--text-muted)" }}
+          >
+            <span className="text-2xl">⋯</span>
+            <span className="text-[11px] mt-0.5 font-medium">เพิ่มเติม</span>
+          </button>
         </div>
       </nav>
+
+      {/* ===== Mobile "More" Drawer ===== */}
+      {showMore && (
+        <div className="lg:hidden fixed inset-0 z-40" onClick={() => setShowMore(false)}>
+          <div className="absolute inset-0 bg-black/30" />
+          <div
+            className="absolute bottom-16 left-0 right-0 rounded-t-2xl p-4 safe-bottom"
+            style={{ background: "var(--bg-card)" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="grid grid-cols-4 gap-3">
+              {moreTabs.map((tab) => {
+                const active = pathname === tab.href;
+                return (
+                  <Link
+                    key={tab.href}
+                    href={tab.href}
+                    onClick={() => setShowMore(false)}
+                    className="flex flex-col items-center py-3 rounded-xl transition-colors"
+                    style={{
+                      background: active ? "var(--accent-light)" : "var(--bg-input)",
+                      color: active ? "var(--accent)" : "var(--text-sub)",
+                    }}
+                  >
+                    <span className="text-2xl">{tab.icon}</span>
+                    <span className="text-[11px] mt-1 font-medium">{tab.label}</span>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

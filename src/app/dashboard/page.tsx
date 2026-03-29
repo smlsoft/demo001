@@ -253,6 +253,26 @@ export default function DashboardPage() {
               </Link>
             ))}
           </div>
+
+          {/* ===== ปุ่มลัดเพิ่มเติม ===== */}
+          <div className="grid grid-cols-4 lg:grid-cols-8 gap-2">
+            {[
+              { href: "/dashboard/savings", icon: "🎯", label: "เป้าออม" },
+              { href: "/dashboard/budget", icon: "💰", label: "งบประมาณ" },
+              { href: "/dashboard/calendar", icon: "📅", label: "ปฏิทิน" },
+              { href: "/dashboard/reminders", icon: "🔔", label: "แจ้งเตือน" },
+              { href: "/dashboard/debts", icon: "📋", label: "หนี้สิน" },
+              { href: "/dashboard/groups", icon: "👥", label: "กลุ่มออม" },
+              { href: "/dashboard/achievements", icon: "🏅", label: "รางวัล" },
+              { href: "/dashboard/forecast", icon: "🔮", label: "พยากรณ์" },
+              { href: "/dashboard/telegram", icon: "📱", label: "Telegram" },
+            ].map((item) => (
+              <Link key={item.href} href={item.href} className="card text-center hover:scale-[1.02] active:scale-[0.98] transition-transform py-3">
+                <span className="text-2xl block">{item.icon}</span>
+                <span className="text-[11px] sm:text-xs font-medium" style={{ color: "var(--text-sub)" }}>{item.label}</span>
+              </Link>
+            ))}
+          </div>
         </>
       )}
     </div>

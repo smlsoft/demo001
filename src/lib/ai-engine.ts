@@ -11,6 +11,10 @@ import { ChatMessage } from "./models/ChatMessage";
 import { PendingTx } from "./models/PendingTx";
 import { DEMO_USERS, toBuddhistYear } from "./demo-users";
 import { askAI } from "./openclaw";
+import { Budget } from "./models/Budget";
+import { SavingsGoal } from "./models/SavingsGoal";
+import { Debt } from "./models/Debt";
+import { Reminder } from "./models/Reminder";
 import { analyzeImage, buildVisionReply, VisionResult } from "./vision";
 import { getCompactHistory } from "./chat-compact";
 import { FileDoc } from "./models/FileDoc";
@@ -67,19 +71,77 @@ function parseTransaction(msg: string) {
 // --------- System Prompt Builder ---------
 
 async function buildSystemPrompt(userId: string) {
-  const [incomeResult, expenseResult, recentTxs] = await Promise.all([
-    Transaction.aggregate([{ $match: { userId, type: "income" } }, { $group: { _id: null, total: { $sum: "$amount" } } }]),
-    Transaction.aggregate([{ $match: { userId, type: "expense" } }, { $group: { _id: null, total: { $sum: "$amount" } } }]),
+  const currentMonth = toBuddhistYear(new Date()).substring(0, 7);
+  const monthStart = `${currentMonth}-01`;
+  const monthEnd = `${currentMonth}-31`;
+
+  // รวมทุก query เป็น 1 Promise.all — ไม่มี query นอก parallel
+  const [totalsResult, recentTxs, budgets, goals, debts, reminders, monthExpenses] = await Promise.all([
+    // รวม income+expense เป็น 1 query แทน 2
+    Transaction.aggregate([
+      { $match: { userId } },
+      { $group: { _id: "$type", total: { $sum: "$amount" } } },
+    ]),
     Transaction.find({ userId }).sort({ createdAt: -1 }).limit(10).lean(),
+    Budget.find({ userId, month: currentMonth }).lean(),
+    SavingsGoal.find({ userId }).lean(),
+    Debt.find({ userId, active: true }).lean(),
+    Reminder.find({ userId, active: true }).lean(),
+    // ย้าย budget expenses มารวมใน parallel
+    Transaction.aggregate([
+      { $match: { userId, type: "expense", date: { $gte: monthStart, $lte: monthEnd } } },
+      { $group: { _id: "$category", total: { $sum: "$amount" } } },
+    ]),
   ]);
 
-  const totalIncome = incomeResult[0]?.total || 0;
-  const totalExpense = expenseResult[0]?.total || 0;
+  const totalIncome = totalsResult.find((t: any) => t._id === "income")?.total || 0;
+  const totalExpense = totalsResult.find((t: any) => t._id === "expense")?.total || 0;
   const user = DEMO_USERS.find((u) => u.id === userId);
 
   const recent = recentTxs.map((t: any) =>
     `${t.type === "income" ? "รายรับ" : "รายจ่าย"}: ${t.description} ${t.amount} บาท (${t.date})`
   ).join("\n");
+
+  // Budget warnings
+  let budgetInfo = "";
+  if (budgets.length > 0) {
+    const spendMap: Record<string, number> = {};
+    for (const e of monthExpenses) spendMap[e._id] = e.total;
+
+    const budgetLines = (budgets as any[]).map((b) => {
+      const spent = spendMap[b.category] || 0;
+      const pct = Math.round((spent / b.monthlyLimit) * 100);
+      const warn = pct >= 100 ? "⚠️ เกินงบ!" : pct >= 80 ? "⚠️ ใกล้เต็ม" : "✅";
+      return `${b.category}: ใช้ ${spent.toLocaleString()}/${b.monthlyLimit.toLocaleString()} (${pct}%) ${warn}`;
+    });
+    budgetInfo = `\nงบประมาณเดือนนี้:\n${budgetLines.join("\n")}`;
+  }
+
+  // Savings goals
+  let goalsInfo = "";
+  if (goals.length > 0) {
+    goalsInfo = `\nเป้าออมเงิน:\n${(goals as any[]).map((g) =>
+      `${g.icon} ${g.name}: ${g.currentAmount.toLocaleString()}/${g.targetAmount.toLocaleString()} (${Math.round((g.currentAmount / g.targetAmount) * 100)}%)`
+    ).join("\n")}`;
+  }
+
+  // Debts
+  let debtInfo = "";
+  if (debts.length > 0) {
+    debtInfo = `\nหนี้สินที่ยังผ่อนอยู่:\n${(debts as any[]).map((d) =>
+      `${d.creditor}: เหลือ ${(d.totalAmount - d.paidAmount).toLocaleString()} บาท (${d.paidInstallments}/${d.installments} งวด) จ่ายทุกวันที่ ${d.dueDay}`
+    ).join("\n")}`;
+  }
+
+  // Upcoming reminders
+  const today = new Date().getDate();
+  const upcoming = (reminders as any[]).filter((r) => Math.abs(r.dueDay - today) <= 5 || (r.dueDay <= 5 && today >= 26));
+  let reminderInfo = "";
+  if (upcoming.length > 0) {
+    reminderInfo = `\nรายการที่ใกล้ถึงกำหนด:\n${upcoming.map((r) =>
+      `${r.title} ${r.amount > 0 ? r.amount.toLocaleString() + " บาท" : ""} วันที่ ${r.dueDay}`
+    ).join("\n")}`;
+  }
 
   return `คุณคือ "น้องบัญชี" เลขาส่วนตัวประจำครัวเรือนของ${user?.name || "ผู้ใช้"}
 
@@ -89,6 +151,9 @@ async function buildSystemPrompt(userId: string) {
 - ทำตัวเหมือนเลขาที่ดี: จำได้ว่าเจ้านายชอบอะไร ไม่ชอบอะไร เคยบอกอะไรไว้
 - พูดสุภาพ อบอุ่น เหมือนคนใกล้ชิดที่ห่วงใย
 - ให้คำแนะนำเรื่องการเงินเชิงรุก เช่น เตือนถ้ารายจ่ายเยอะ แนะนำวิธีออม
+- ถ้างบประมาณหมวดไหนใกล้เต็มหรือเกิน ให้เตือนเจ้านายด้วย
+- ถ้าหนี้ใกล้ถึงกำหนดจ่าย ให้เตือนด้วย
+- ถ้าเป้าออมใกล้ถึงเป้า ให้ให้กำลังใจ
 
 ข้อมูลเจ้านาย:
 - ชื่อ: ${user?.name || "ไม่ทราบ"}
@@ -96,6 +161,7 @@ async function buildSystemPrompt(userId: string) {
 - รายรับรวม: ${totalIncome.toLocaleString()} บาท
 - รายจ่ายรวม: ${totalExpense.toLocaleString()} บาท
 - คงเหลือ: ${(totalIncome - totalExpense).toLocaleString()} บาท
+${budgetInfo}${goalsInfo}${debtInfo}${reminderInfo}
 
 รายการล่าสุด:
 ${recent || "(ยังไม่มี)"}
@@ -104,9 +170,11 @@ ${recent || "(ยังไม่มี)"}
 
 สิ่งที่น้องบัญชีทำได้:
 - จดบันทึกรายรับ-รายจ่ายให้ (เขาจะพิมพ์มา ระบบจัดการให้อัตโนมัติ)
-- สรุปยอดบัญชี
+- สรุปยอดบัญชี + สรุปงบประมาณ
 - อ่านรูป slip/ใบเสร็จ
 - ให้คำแนะนำการเงิน การออม เรื่องทั่วไป
+- เตือนเรื่องหนี้สิน งบประมาณ เป้าออม
+- พยากรณ์รายจ่ายเดือนหน้า
 - คุยเป็นเพื่อน ให้กำลังใจ
 - จำเรื่องที่คุยกันไว้ และอ้างอิงได้ในบทสนทนาถัดไป`;
 }

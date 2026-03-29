@@ -26,6 +26,8 @@ const PendingTxSchema = new Schema<IPendingTx>(
   { timestamps: true }
 );
 
+// compound index: ค้นหา pending ล่าสุดของแต่ละ user
+PendingTxSchema.index({ userId: 1, createdAt: -1 });
 // Auto-delete หลัง 30 นาที
 PendingTxSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 

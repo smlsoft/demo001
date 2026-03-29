@@ -30,6 +30,9 @@ const FileDocSchema = new Schema<IFileDoc>(
   { timestamps: true }
 );
 
+// compound index: เรียงไฟล์ตามเวลา
+FileDocSchema.index({ userId: 1, createdAt: -1 });
+
 export const FileDoc =
   mongoose.models.FileDoc ||
   mongoose.model<IFileDoc>("FileDoc", FileDocSchema);
