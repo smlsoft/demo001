@@ -432,8 +432,10 @@ export async function handleImage(
       r2Key,
     });
     fileDocId = fileDoc._id.toString();
-  } catch (err) {
-    console.error("[handleImage] R2 upload error:", err);
+  } catch (err: any) {
+    console.error("[handleImage] R2 upload error:", err?.message);
+    // แจ้ง user ว่าเก็บรูปไม่ได้
+    await ChatMessage.create({ userId, role: "assistant", content: "⚠️ เก็บรูปไม่สำเร็จ (R2 storage error) แต่ยังวิเคราะห์ได้", action: "error" });
   }
 
   // 2. วิเคราะห์รูปด้วย AI Vision
