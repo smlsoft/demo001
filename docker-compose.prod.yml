@@ -5,12 +5,11 @@ services:
     build: .
     container_name: demo001-web
     restart: unless-stopped
-    network_mode: host
+    ports:
+      - "3100:3000"
     extra_hosts:
-      - "aigw-local.hiclaw.io:127.0.0.1"
+      - "aigw-local.hiclaw.io:host-gateway"
     env_file:
       - .env.local
     environment:
       - NODE_ENV=production
-      - PORT=3100
-      - HOSTNAME=0.0.0.0
