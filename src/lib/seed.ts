@@ -4,6 +4,13 @@ import { Transaction } from "./models/Transaction";
 import { ChatMessage } from "./models/ChatMessage";
 import { ChatSummary } from "./models/ChatSummary";
 import { PendingTx } from "./models/PendingTx";
+import { SavingsGoal } from "./models/SavingsGoal";
+import { Budget } from "./models/Budget";
+import { Reminder } from "./models/Reminder";
+import { RecurringTx } from "./models/RecurringTx";
+import { Debt } from "./models/Debt";
+import { SavingsGroup, GroupDeposit } from "./models/SavingsGroup";
+import { Achievement } from "./models/Achievement";
 
 // ===== Demo Users =====
 const DEMO_USERS_DATA = [
@@ -224,6 +231,148 @@ function generateTransactions(userId: string, templates: TxTemplate[]): Array<{
   return txs;
 }
 
+// ===== ข้อมูลตัวอย่างระบบใหม่ =====
+
+function currentMonth(): string {
+  const now = new Date();
+  return `${now.getFullYear() + 543}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+}
+
+async function seedSavingsGoals() {
+  const goals = [
+    { userId: "demo-1", name: "ซื้อรถไถมือสอง", targetAmount: 80000, currentAmount: 32000, icon: "🚜", deadline: "" },
+    { userId: "demo-1", name: "เงินสำรองฉุกเฉิน 3 เดือน", targetAmount: 15000, currentAmount: 8500, icon: "🏦", deadline: "" },
+    { userId: "demo-2", name: "ขยายร้านค้า", targetAmount: 50000, currentAmount: 28000, icon: "🏪", deadline: "" },
+    { userId: "demo-2", name: "ทุนการศึกษาลูก", targetAmount: 30000, currentAmount: 12000, icon: "🎓", deadline: "" },
+    { userId: "demo-3", name: "ซื้อเครื่องมือช่างชุดใหม่", targetAmount: 8000, currentAmount: 5500, icon: "🔧", deadline: "" },
+    { userId: "demo-4", name: "สร้างโรงเรือนปลูกผัก", targetAmount: 25000, currentAmount: 18000, icon: "🌿", deadline: "" },
+    { userId: "demo-4", name: "ซื้อระบบน้ำหยด", targetAmount: 12000, currentAmount: 12000, icon: "💧", deadline: "" },
+    { userId: "demo-5", name: "ซื้อวัวเพิ่ม 2 ตัว", targetAmount: 40000, currentAmount: 15000, icon: "🐄", deadline: "" },
+    { userId: "demo-5", name: "ซ่อมคอกสัตว์", targetAmount: 10000, currentAmount: 4000, icon: "🏠", deadline: "" },
+  ];
+  await SavingsGoal.insertMany(goals);
+  console.log(`✅ SavingsGoals: ${goals.length} รายการ`);
+}
+
+async function seedBudgets() {
+  const month = currentMonth();
+  const budgets = [
+    { userId: "demo-1", category: "อาหาร/ของใช้", monthlyLimit: 5000, month },
+    { userId: "demo-1", category: "ค่าประกอบอาชีพ", monthlyLimit: 8000, month },
+    { userId: "demo-1", category: "งานสังคม", monthlyLimit: 1000, month },
+    { userId: "demo-2", category: "ค่าประกอบอาชีพ", monthlyLimit: 15000, month },
+    { userId: "demo-2", category: "อาหาร/ของใช้", monthlyLimit: 6000, month },
+    { userId: "demo-2", category: "การศึกษา", monthlyLimit: 2000, month },
+    { userId: "demo-3", category: "อาหาร/ของใช้", monthlyLimit: 4000, month },
+    { userId: "demo-3", category: "พักผ่อน", monthlyLimit: 1500, month },
+    { userId: "demo-4", category: "ค่าประกอบอาชีพ", monthlyLimit: 3000, month },
+    { userId: "demo-4", category: "อาหาร/ของใช้", monthlyLimit: 4000, month },
+    { userId: "demo-5", category: "ค่าประกอบอาชีพ", monthlyLimit: 10000, month },
+    { userId: "demo-5", category: "อาหาร/ของใช้", monthlyLimit: 5000, month },
+  ];
+  await Budget.insertMany(budgets);
+  console.log(`✅ Budgets: ${budgets.length} รายการ`);
+}
+
+async function seedReminders() {
+  const reminders = [
+    { userId: "demo-1", title: "จ่ายค่าไฟฟ้า", amount: 350, dueDay: 20, category: "อาหาร/ของใช้", type: "expense" as const, active: true },
+    { userId: "demo-1", title: "จ่ายค่าน้ำประปา", amount: 100, dueDay: 15, category: "อาหาร/ของใช้", type: "expense" as const, active: true },
+    { userId: "demo-1", title: "รับเงินผู้สูงอายุ", amount: 600, dueDay: 10, category: "สวัสดิการ", type: "income" as const, active: true },
+    { userId: "demo-2", title: "จ่ายค่าเช่าแผงตลาด", amount: 3000, dueDay: 1, category: "ค่าประกอบอาชีพ", type: "expense" as const, active: true },
+    { userId: "demo-2", title: "จ่ายค่าไฟฟ้า", amount: 500, dueDay: 18, category: "อาหาร/ของใช้", type: "expense" as const, active: true },
+    { userId: "demo-3", title: "จ่ายค่าไฟฟ้า", amount: 250, dueDay: 20, category: "อาหาร/ของใช้", type: "expense" as const, active: true },
+    { userId: "demo-4", title: "จ่ายค่าน้ำประปา", amount: 120, dueDay: 15, category: "อาหาร/ของใช้", type: "expense" as const, active: true },
+    { userId: "demo-5", title: "ซื้ออาหารสัตว์", amount: 1200, dueDay: 5, category: "ค่าประกอบอาชีพ", type: "expense" as const, active: true },
+    { userId: "demo-5", title: "จ่ายค่าไฟฟ้า", amount: 400, dueDay: 20, category: "อาหาร/ของใช้", type: "expense" as const, active: true },
+  ];
+  await Reminder.insertMany(reminders);
+  console.log(`✅ Reminders: ${reminders.length} รายการ`);
+}
+
+async function seedRecurringTx() {
+  const items = [
+    { userId: "demo-1", description: "ค่าไฟฟ้า", amount: 350, type: "expense" as const, category: "อาหาร/ของใช้", dueDay: 20, active: true },
+    { userId: "demo-1", description: "ค่าน้ำประปา", amount: 100, type: "expense" as const, category: "อาหาร/ของใช้", dueDay: 15, active: true },
+    { userId: "demo-1", description: "ค่าโทรศัพท์", amount: 200, type: "expense" as const, category: "อาหาร/ของใช้", dueDay: 25, active: true },
+    { userId: "demo-2", description: "ค่าเช่าแผง", amount: 3000, type: "expense" as const, category: "ค่าประกอบอาชีพ", dueDay: 1, active: true },
+    { userId: "demo-2", description: "ค่าไฟฟ้า", amount: 500, type: "expense" as const, category: "อาหาร/ของใช้", dueDay: 18, active: true },
+    { userId: "demo-3", description: "ค่าไฟฟ้า", amount: 250, type: "expense" as const, category: "อาหาร/ของใช้", dueDay: 20, active: true },
+    { userId: "demo-4", description: "ค่าน้ำ", amount: 120, type: "expense" as const, category: "อาหาร/ของใช้", dueDay: 15, active: true },
+    { userId: "demo-5", description: "ค่าอาหารสัตว์", amount: 1200, type: "expense" as const, category: "ค่าประกอบอาชีพ", dueDay: 5, active: true },
+  ];
+  await RecurringTx.insertMany(items);
+  console.log(`✅ RecurringTx: ${items.length} รายการ`);
+}
+
+async function seedDebts() {
+  const debts = [
+    { userId: "demo-1", creditor: "ธ.ก.ส.", totalAmount: 50000, paidAmount: 20000, monthlyPayment: 2500, installments: 20, paidInstallments: 8, dueDay: 5, startDate: "2568-08-01", note: "กู้ซื้อปุ๋ยและเมล็ดพันธุ์", active: true },
+    { userId: "demo-1", creditor: "กองทุนหมู่บ้าน", totalAmount: 20000, paidAmount: 15000, monthlyPayment: 2500, installments: 8, paidInstallments: 6, dueDay: 15, startDate: "2568-10-01", note: "กู้ซ่อมบ้าน", active: true },
+    { userId: "demo-2", creditor: "ธนาคารออมสิน", totalAmount: 30000, paidAmount: 10000, monthlyPayment: 2000, installments: 15, paidInstallments: 5, dueDay: 10, startDate: "2568-11-01", note: "กู้ขยายร้าน", active: true },
+    { userId: "demo-3", creditor: "เพื่อนบ้าน (ลุงสมาน)", totalAmount: 5000, paidAmount: 3000, monthlyPayment: 1000, installments: 5, paidInstallments: 3, dueDay: 1, startDate: "2569-01-01", note: "ยืมซ่อมรถ", active: true },
+    { userId: "demo-5", creditor: "สหกรณ์การเกษตร", totalAmount: 40000, paidAmount: 8000, monthlyPayment: 2000, installments: 20, paidInstallments: 4, dueDay: 20, startDate: "2568-12-01", note: "กู้ซื้อวัว", active: true },
+    { userId: "demo-5", creditor: "ธ.ก.ส.", totalAmount: 15000, paidAmount: 15000, monthlyPayment: 2500, installments: 6, paidInstallments: 6, dueDay: 5, startDate: "2568-04-01", note: "กู้ซื้ออาหารสัตว์", active: false },
+  ];
+  await Debt.insertMany(debts);
+  console.log(`✅ Debts: ${debts.length} รายการ`);
+}
+
+async function seedSavingsGroups() {
+  const group = await SavingsGroup.create({
+    name: "กลุ่มออมทรัพย์บ้านสุขสันต์",
+    description: "ออมกันเดือนละ 500 บาท เพื่อเป็นเงินทุนหมุนเวียน",
+    members: ["demo-1", "demo-2", "demo-4", "demo-5"],
+    targetPerMember: 6000,
+    createdBy: "demo-1",
+  });
+
+  const deposits = [
+    { groupId: group._id.toString(), userId: "demo-1", amount: 500, date: "2569-01-15", note: "งวดเดือน ม.ค." },
+    { groupId: group._id.toString(), userId: "demo-2", amount: 500, date: "2569-01-15", note: "งวดเดือน ม.ค." },
+    { groupId: group._id.toString(), userId: "demo-4", amount: 500, date: "2569-01-16", note: "งวดเดือน ม.ค." },
+    { groupId: group._id.toString(), userId: "demo-5", amount: 500, date: "2569-01-18", note: "งวดเดือน ม.ค." },
+    { groupId: group._id.toString(), userId: "demo-1", amount: 500, date: "2569-02-14", note: "งวดเดือน ก.พ." },
+    { groupId: group._id.toString(), userId: "demo-2", amount: 500, date: "2569-02-14", note: "งวดเดือน ก.พ." },
+    { groupId: group._id.toString(), userId: "demo-4", amount: 500, date: "2569-02-15", note: "งวดเดือน ก.พ." },
+    { groupId: group._id.toString(), userId: "demo-5", amount: 500, date: "2569-02-16", note: "งวดเดือน ก.พ." },
+    { groupId: group._id.toString(), userId: "demo-1", amount: 500, date: "2569-03-15", note: "งวดเดือน มี.ค." },
+    { groupId: group._id.toString(), userId: "demo-2", amount: 1000, date: "2569-03-15", note: "งวดเดือน มี.ค. + เพิ่ม" },
+    { groupId: group._id.toString(), userId: "demo-4", amount: 500, date: "2569-03-16", note: "งวดเดือน มี.ค." },
+  ];
+  await GroupDeposit.insertMany(deposits);
+  console.log(`✅ SavingsGroup: 1 กลุ่ม + ${deposits.length} ฝากเงิน`);
+}
+
+async function seedAchievements() {
+  const achievements = [
+    { userId: "demo-1", type: "first_tx", title: "เริ่มต้นดี!", icon: "⭐" },
+    { userId: "demo-1", type: "tx_10", title: "จดครบ 10 รายการ", icon: "📝" },
+    { userId: "demo-1", type: "tx_50", title: "นักบัญชีมือใหม่", icon: "🥉" },
+    { userId: "demo-1", type: "tx_100", title: "นักบัญชีมืออาชีพ", icon: "🥇" },
+    { userId: "demo-1", type: "streak_7", title: "จดบัญชีครบ 7 วัน", icon: "🔥" },
+    { userId: "demo-2", type: "first_tx", title: "เริ่มต้นดี!", icon: "⭐" },
+    { userId: "demo-2", type: "tx_10", title: "จดครบ 10 รายการ", icon: "📝" },
+    { userId: "demo-2", type: "tx_50", title: "นักบัญชีมือใหม่", icon: "🥉" },
+    { userId: "demo-2", type: "tx_100", title: "นักบัญชีมืออาชีพ", icon: "🥇" },
+    { userId: "demo-2", type: "saver", title: "นักออม", icon: "🐷" },
+    { userId: "demo-3", type: "first_tx", title: "เริ่มต้นดี!", icon: "⭐" },
+    { userId: "demo-3", type: "tx_10", title: "จดครบ 10 รายการ", icon: "📝" },
+    { userId: "demo-3", type: "tx_50", title: "นักบัญชีมือใหม่", icon: "🥉" },
+    { userId: "demo-4", type: "first_tx", title: "เริ่มต้นดี!", icon: "⭐" },
+    { userId: "demo-4", type: "tx_10", title: "จดครบ 10 รายการ", icon: "📝" },
+    { userId: "demo-4", type: "tx_50", title: "นักบัญชีมือใหม่", icon: "🥉" },
+    { userId: "demo-4", type: "tx_100", title: "นักบัญชีมืออาชีพ", icon: "🥇" },
+    { userId: "demo-4", type: "saver", title: "นักออม", icon: "🐷" },
+    { userId: "demo-4", type: "super_saver", title: "ซุปเปอร์นักออม", icon: "🏆" },
+    { userId: "demo-5", type: "first_tx", title: "เริ่มต้นดี!", icon: "⭐" },
+    { userId: "demo-5", type: "tx_10", title: "จดครบ 10 รายการ", icon: "📝" },
+    { userId: "demo-5", type: "tx_50", title: "นักบัญชีมือใหม่", icon: "🥉" },
+  ];
+  await Achievement.insertMany(achievements);
+  console.log(`✅ Achievements: ${achievements.length} เหรียญ`);
+}
+
 // ===== Main Seed =====
 
 export async function seedDemoData() {
@@ -241,7 +390,18 @@ export async function seedDemoData() {
     console.log(`✅ ${userId}: ${txs.length} รายการ`);
   }
 
-  console.log("✅ Seed เสร็จแล้ว");
+  // seed ระบบใหม่ทั้งหมด
+  await Promise.all([
+    seedSavingsGoals(),
+    seedBudgets(),
+    seedReminders(),
+    seedRecurringTx(),
+    seedDebts(),
+    seedAchievements(),
+  ]);
+  await seedSavingsGroups(); // ต้อง await เพราะต้องรู้ group._id
+
+  console.log("✅ Seed เสร็จแล้ว (ทุกระบบ)");
 }
 
 /**
@@ -257,11 +417,19 @@ export async function resetAndSeed() {
     ChatMessage.deleteMany({}),
     ChatSummary.deleteMany({}),
     PendingTx.deleteMany({}),
+    SavingsGoal.deleteMany({}),
+    Budget.deleteMany({}),
+    Reminder.deleteMany({}),
+    RecurringTx.deleteMany({}),
+    Debt.deleteMany({}),
+    SavingsGroup.deleteMany({}),
+    GroupDeposit.deleteMany({}),
+    Achievement.deleteMany({}),
   ]);
 
   console.log("🗑️ ลบข้อมูลเก่าทั้งหมดแล้ว");
 
-  // seed ใหม่ (ต้อง reset existingUsers check)
+  // seed ใหม่
   await User.insertMany(DEMO_USERS_DATA);
 
   for (const [userId, templates] of Object.entries(USER_TEMPLATES)) {
@@ -272,5 +440,15 @@ export async function resetAndSeed() {
     console.log(`✅ ${userId}: ${txs.length} รายการ`);
   }
 
-  console.log("✅ Seed ใหม่เสร็จแล้ว");
+  await Promise.all([
+    seedSavingsGoals(),
+    seedBudgets(),
+    seedReminders(),
+    seedRecurringTx(),
+    seedDebts(),
+    seedAchievements(),
+  ]);
+  await seedSavingsGroups();
+
+  console.log("✅ Seed ใหม่เสร็จแล้ว (ทุกระบบ)");
 }

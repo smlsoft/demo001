@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useTheme } from "@/lib/theme";
+import { t } from "@/lib/i18n";
 
 interface Props {
   user: { id: string; name: string; occupation: string; avatar: string };
@@ -27,23 +28,23 @@ export function NavBar({ user }: Props) {
   }
 
   const tabs = [
-    { href: "/dashboard", label: "หน้าหลัก", icon: "🏠" },
-    { href: "/dashboard/transactions", label: "บันทึก", icon: "📝" },
-    { href: "/dashboard/report", label: "รายงาน", icon: "📊" },
-    { href: "/dashboard/ai-chat", label: "ถาม AI", icon: "🤖" },
-    { href: "/dashboard/files", label: "เอกสาร", icon: "📁" },
+    { href: "/dashboard", label: t("หน้าหลัก", dialect), icon: "🏠" },
+    { href: "/dashboard/transactions", label: t("บันทึก", dialect), icon: "📝" },
+    { href: "/dashboard/report", label: t("รายงาน", dialect), icon: "📊" },
+    { href: "/dashboard/ai-chat", label: t("ถาม AI", dialect), icon: "🤖" },
+    { href: "/dashboard/files", label: t("เอกสาร", dialect), icon: "📁" },
   ];
 
   const moreTabs = [
-    { href: "/dashboard/savings", label: "เป้าออม", icon: "🎯" },
-    { href: "/dashboard/budget", label: "งบประมาณ", icon: "💰" },
-    { href: "/dashboard/calendar", label: "ปฏิทิน", icon: "📅" },
-    { href: "/dashboard/reminders", label: "แจ้งเตือน", icon: "🔔" },
-    { href: "/dashboard/debts", label: "หนี้สิน", icon: "📋" },
-    { href: "/dashboard/groups", label: "กลุ่มออม", icon: "👥" },
-    { href: "/dashboard/achievements", label: "รางวัล", icon: "🏅" },
-    { href: "/dashboard/forecast", label: "พยากรณ์", icon: "🔮" },
-    { href: "/dashboard/telegram", label: "Telegram", icon: "📱" },
+    { href: "/dashboard/savings", label: t("เป้าออม", dialect), icon: "🎯" },
+    { href: "/dashboard/budget", label: t("งบประมาณ", dialect), icon: "💰" },
+    { href: "/dashboard/calendar", label: t("ปฏิทิน", dialect), icon: "📅" },
+    { href: "/dashboard/reminders", label: t("แจ้งเตือน", dialect), icon: "🔔" },
+    { href: "/dashboard/debts", label: t("หนี้สิน", dialect), icon: "📋" },
+    { href: "/dashboard/groups", label: t("กลุ่มออม", dialect), icon: "👥" },
+    { href: "/dashboard/achievements", label: t("รางวัล", dialect), icon: "🏅" },
+    { href: "/dashboard/forecast", label: t("พยากรณ์", dialect), icon: "🔮" },
+    { href: "/dashboard/telegram", label: t("Telegram", dialect), icon: "📱" },
   ];
 
   const [showMore, setShowMore] = useState(false);
@@ -89,7 +90,7 @@ export function NavBar({ user }: Props) {
           })}
 
           <div className="pt-2 mt-2" style={{ borderTop: "1px solid var(--border)" }}>
-            <div className="px-4 py-1 text-xs font-bold" style={{ color: "var(--text-muted)" }}>เครื่องมือเพิ่มเติม</div>
+            <div className="px-4 py-1 text-xs font-bold" style={{ color: "var(--text-muted)" }}>{t("เครื่องมือเพิ่มเติม", dialect)}</div>
             {moreTabs.map((tab) => {
               const active = pathname === tab.href;
               return (
@@ -118,7 +119,7 @@ export function NavBar({ user }: Props) {
             style={{ background: "var(--bg-input)", color: "var(--text-sub)" }}
           >
             <span className="text-xl">{theme === "light" ? "🌙" : "☀️"}</span>
-            <span className="font-medium">{theme === "light" ? "โหมดมืด" : "โหมดสว่าง"}</span>
+            <span className="font-medium">{theme === "light" ? t("โหมดมืด", dialect) : t("โหมดสว่าง", dialect)}</span>
           </button>
           {/* เลือกภาษาถิ่น */}
           <div className="flex gap-1 px-2">
@@ -138,7 +139,7 @@ export function NavBar({ user }: Props) {
             style={{ background: "var(--bg-input)", color: "var(--text-sub)" }}
           >
             <span className="text-xl">🏠</span>
-            <span className="font-medium">หน้าแรก</span>
+            <span className="font-medium">{t("หน้าแรก", dialect)}</span>
           </Link>
           <button
             onClick={logout}
@@ -146,7 +147,7 @@ export function NavBar({ user }: Props) {
             style={{ background: "var(--bg-input)", color: "var(--expense)" }}
           >
             <span className="text-xl">🚪</span>
-            <span className="font-medium">ออกจากระบบ</span>
+            <span className="font-medium">{t("ออกจากระบบ", dialect)}</span>
           </button>
         </div>
       </aside>
@@ -177,7 +178,7 @@ export function NavBar({ user }: Props) {
               className="px-3 py-2 rounded-xl text-sm font-bold"
               style={{ background: "var(--bg-input)", color: "var(--expense)" }}
             >
-              ออก
+              {t("ออก", dialect)}
             </button>
           </div>
         </div>
@@ -210,7 +211,7 @@ export function NavBar({ user }: Props) {
             style={{ color: showMore ? "var(--accent)" : "var(--text-muted)" }}
           >
             <span className="text-2xl">⋯</span>
-            <span className="text-[11px] mt-0.5 font-medium">เพิ่มเติม</span>
+            <span className="text-[11px] mt-0.5 font-medium">{t("เพิ่มเติม", dialect)}</span>
           </button>
         </div>
       </nav>

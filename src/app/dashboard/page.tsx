@@ -2,6 +2,8 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
+import { useTheme } from "@/lib/theme";
+import { t } from "@/lib/i18n";
 
 interface Summary {
   totalIncome: number;
@@ -52,6 +54,7 @@ function fmtDateShort(d: string) {
 }
 
 export default function DashboardPage() {
+  const { dialect } = useTheme();
   const [data, setData] = useState<Summary | null>(null);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<Period>("month");
@@ -134,17 +137,17 @@ export default function DashboardPage() {
           <div className="card">
             <div className="grid grid-cols-3 gap-4 text-center mb-4">
               <div>
-                <div className="text-xs sm:text-sm font-medium" style={{ color: "var(--income)" }}>รายรับ</div>
+                <div className="text-xs sm:text-sm font-medium" style={{ color: "var(--income)" }}>{t("รายรับ", dialect)}</div>
                 <div className="text-xl sm:text-2xl lg:text-3xl font-bold" style={{ color: "var(--income)" }}>{s.totalIncome.toLocaleString()}</div>
                 <div className="text-[10px] sm:text-xs" style={{ color: "var(--text-muted)" }}>{s.incomeCount} รายการ</div>
               </div>
               <div>
-                <div className="text-xs sm:text-sm font-medium" style={{ color: "var(--expense)" }}>รายจ่าย</div>
+                <div className="text-xs sm:text-sm font-medium" style={{ color: "var(--expense)" }}>{t("รายจ่าย", dialect)}</div>
                 <div className="text-xl sm:text-2xl lg:text-3xl font-bold" style={{ color: "var(--expense)" }}>{s.totalExpense.toLocaleString()}</div>
                 <div className="text-[10px] sm:text-xs" style={{ color: "var(--text-muted)" }}>{s.expenseCount} รายการ</div>
               </div>
               <div>
-                <div className="text-xs sm:text-sm font-medium" style={{ color: "var(--blue)" }}>คงเหลือ</div>
+                <div className="text-xs sm:text-sm font-medium" style={{ color: "var(--blue)" }}>{t("คงเหลือ", dialect)}</div>
                 <div className="text-xl sm:text-2xl lg:text-3xl font-bold" style={{ color: s.balance >= 0 ? "var(--blue)" : "var(--expense)" }}>{s.balance.toLocaleString()}</div>
                 <div className="text-[10px] sm:text-xs" style={{ color: "var(--text-muted)" }}>บาท</div>
               </div>
@@ -242,10 +245,10 @@ export default function DashboardPage() {
           {/* ===== ปุ่มลัด ===== */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             {[
-              { href: "/dashboard/transactions", icon: "📝", label: "บันทึกรายรับ-รายจ่าย" },
-              { href: "/dashboard/ai-chat", icon: "🤖", label: "คุยกับน้องบัญชี" },
-              { href: "/dashboard/report", icon: "📊", label: "ดูรายงาน/กราฟ" },
-              { href: "/dashboard/files", icon: "📁", label: "เอกสาร/รูปภาพ" },
+              { href: "/dashboard/transactions", icon: "📝", label: t("บันทึกรายรับ-รายจ่าย_short", dialect) },
+              { href: "/dashboard/ai-chat", icon: "🤖", label: t("คุยกับน้องบัญชี", dialect) },
+              { href: "/dashboard/report", icon: "📊", label: t("ดูรายงาน/กราฟ", dialect) },
+              { href: "/dashboard/files", icon: "📁", label: t("เอกสาร/รูปภาพ", dialect) },
             ].map((item) => (
               <Link key={item.href} href={item.href} className="card text-center hover:scale-[1.02] active:scale-[0.98] transition-transform">
                 <span className="text-3xl lg:text-4xl block mb-1">{item.icon}</span>
@@ -257,15 +260,15 @@ export default function DashboardPage() {
           {/* ===== ปุ่มลัดเพิ่มเติม ===== */}
           <div className="grid grid-cols-4 lg:grid-cols-8 gap-2">
             {[
-              { href: "/dashboard/savings", icon: "🎯", label: "เป้าออม" },
-              { href: "/dashboard/budget", icon: "💰", label: "งบประมาณ" },
-              { href: "/dashboard/calendar", icon: "📅", label: "ปฏิทิน" },
-              { href: "/dashboard/reminders", icon: "🔔", label: "แจ้งเตือน" },
-              { href: "/dashboard/debts", icon: "📋", label: "หนี้สิน" },
-              { href: "/dashboard/groups", icon: "👥", label: "กลุ่มออม" },
-              { href: "/dashboard/achievements", icon: "🏅", label: "รางวัล" },
-              { href: "/dashboard/forecast", icon: "🔮", label: "พยากรณ์" },
-              { href: "/dashboard/telegram", icon: "📱", label: "Telegram" },
+              { href: "/dashboard/savings", icon: "🎯", label: t("เป้าออม", dialect) },
+              { href: "/dashboard/budget", icon: "💰", label: t("งบประมาณ", dialect) },
+              { href: "/dashboard/calendar", icon: "📅", label: t("ปฏิทิน", dialect) },
+              { href: "/dashboard/reminders", icon: "🔔", label: t("แจ้งเตือน", dialect) },
+              { href: "/dashboard/debts", icon: "📋", label: t("หนี้สิน", dialect) },
+              { href: "/dashboard/groups", icon: "👥", label: t("กลุ่มออม", dialect) },
+              { href: "/dashboard/achievements", icon: "🏅", label: t("รางวัล", dialect) },
+              { href: "/dashboard/forecast", icon: "🔮", label: t("พยากรณ์", dialect) },
+              { href: "/dashboard/telegram", icon: "📱", label: t("Telegram", dialect) },
             ].map((item) => (
               <Link key={item.href} href={item.href} className="card text-center hover:scale-[1.02] active:scale-[0.98] transition-transform py-3">
                 <span className="text-2xl block">{item.icon}</span>

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { VoiceInput } from "@/components/VoiceInput";
 import { useTheme } from "@/lib/theme";
+import { t } from "@/lib/i18n";
 
 interface Message {
   _id?: string;
@@ -72,16 +73,16 @@ export default function AiChatPage() {
   }
 
   const quick = [
-    { label: "สรุปยอด", msg: "สรุปยอดบัญชี" },
-    { label: "ดูรายการ", msg: "ดูรายการล่าสุด" },
-    { label: "แนะนำออมเงิน", msg: "แนะนำวิธีออมเงิน" },
-    { label: "วิธีใช้", msg: "ช่วยแนะนำวิธีใช้" },
+    { label: t("สรุปยอด", dialect), msg: "สรุปยอดบัญชี" },
+    { label: t("ดูรายการ", dialect), msg: "ดูรายการล่าสุด" },
+    { label: t("แนะนำออมเงิน", dialect), msg: "แนะนำวิธีออมเงิน" },
+    { label: t("วิธีใช้", dialect), msg: "ช่วยแนะนำวิธีใช้" },
   ];
 
   return (
     <div className="flex flex-col h-[calc(100vh-140px)] lg:h-[calc(100vh-48px)] lg:max-w-3xl lg:mx-auto">
       <div className="mb-2">
-        <h1 className="text-xl sm:text-2xl font-bold" style={{ color: "var(--text)" }}>AI ผู้ช่วยบัญชี</h1>
+        <h1 className="text-xl sm:text-2xl font-bold" style={{ color: "var(--text)" }}>{t("AI ผู้ช่วยบัญชี", dialect)}</h1>
         <p className="text-xs sm:text-sm" style={{ color: "var(--text-muted)" }}>คุยกับ AI ได้ทุกเรื่อง — บันทึกบัญชี ขอคำแนะนำ ส่งรูป slip</p>
       </div>
 
@@ -105,8 +106,8 @@ export default function AiChatPage() {
         ) : messages.length === 0 ? (
           <div className="text-center py-8">
             <div className="text-5xl mb-3">🤖</div>
-            <p className="font-bold text-lg" style={{ color: "var(--text)" }}>สวัสดีค่ะ!</p>
-            <p style={{ color: "var(--text-sub)" }}>ฉันคือน้องบัญชี ผู้ช่วยของคุณ</p>
+            <p className="font-bold text-lg" style={{ color: "var(--text)" }}>{t("สวัสดีค่ะ", dialect)}</p>
+            <p style={{ color: "var(--text-sub)" }}>{t("ฉันคือน้องบัญชี ผู้ช่วยของคุณ", dialect)}</p>
             <p className="text-sm mt-2" style={{ color: "var(--text-muted)" }}>พิมพ์ &quot;ขายข้าว 3000&quot; หรือส่งรูป slip ได้เลย!</p>
           </div>
         ) : (
@@ -150,11 +151,11 @@ export default function AiChatPage() {
         <input type="text" value={input} onChange={(e) => setInput(e.target.value)} disabled={sending}
           className="flex-1 border rounded-xl px-4 py-3"
           style={{ background: "var(--bg-input)", borderColor: "var(--border)", color: "var(--text)" }}
-          placeholder="พิมพ์ หรือกด 🎤 พูด" />
+          placeholder={t("พิมพ์ หรือกด 🎤 พูด", dialect)} />
         <button type="submit" disabled={sending || !input.trim()}
           className="px-5 py-3 rounded-xl text-white font-bold shrink-0"
           style={{ background: "var(--accent)", opacity: sending || !input.trim() ? 0.5 : 1 }}>
-          ส่ง
+          {t("ส่ง", dialect)}
         </button>
       </form>
     </div>

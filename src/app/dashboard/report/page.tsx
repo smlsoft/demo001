@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
 import { useTheme } from "@/lib/theme";
+import { t } from "@/lib/i18n";
 
 interface Summary {
   totalIncome: number;
@@ -31,7 +32,7 @@ function fmtDateFull(dateStr: string): string {
 }
 
 export default function ReportPage() {
-  const { theme } = useTheme();
+  const { theme, dialect } = useTheme();
   const [data, setData] = useState<Summary | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -59,14 +60,14 @@ export default function ReportPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold" style={{ color: "var(--text)" }}>📊 รายงาน</h1>
+          <h1 className="text-2xl font-bold" style={{ color: "var(--text)" }}>📊 {t("รายงาน", dialect)}</h1>
           <p className="text-sm" style={{ color: "var(--text-muted)" }}>สรุปภาพรวมรายรับ-รายจ่าย</p>
         </div>
         <button
           onClick={() => window.open("/api/export-pdf", "_blank")}
           className="px-4 py-2 rounded-xl font-medium text-sm flex items-center gap-2 hover:scale-105 active:scale-95 transition-transform"
           style={{ background: "var(--accent)", color: "white" }}>
-          🖨️ พิมพ์ PDF
+          🖨️ {t("พิมพ์ PDF", dialect)}
         </button>
       </div>
 
