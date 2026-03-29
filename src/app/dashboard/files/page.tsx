@@ -21,11 +21,33 @@ function fmtSize(b: number) {
   return `${(b / 1048576).toFixed(1)} MB`;
 }
 
-function fmtIcon(mime: string) {
-  if (mime.startsWith("image/")) return "🖼️";
-  if (mime.includes("pdf")) return "📄";
-  if (mime.includes("word") || mime.includes("doc")) return "📝";
-  return "📎";
+/** Category → icon + color สำหรับไฟล์ที่ไม่ใช่รูปภาพ */
+function catStyle(category: string): { icon: string; bg: string; color: string } {
+  switch (category) {
+    case "slip เงินเข้า":
+    case "เอกสารเงินเข้า":
+      return { icon: "💰", bg: "#dcfce7", color: "#16a34a" };
+    case "slip เงินออก":
+    case "เอกสารเงินออก":
+      return { icon: "💸", bg: "#fee2e2", color: "#dc2626" };
+    case "ใบเสร็จ":
+      return { icon: "🧾", bg: "#fef9c3", color: "#ca8a04" };
+    case "สัญญา":
+      return { icon: "📋", bg: "#e0e7ff", color: "#4f46e5" };
+    case "รูปภาพ":
+      return { icon: "🖼️", bg: "#f3e8ff", color: "#9333ea" };
+    case "เอกสาร":
+      return { icon: "📄", bg: "#f0f9ff", color: "#0284c7" };
+    default:
+      return { icon: "📎", bg: "var(--bg-input)", color: "var(--text-sub)" };
+  }
+}
+
+function mimeIcon(mime: string): { icon: string; bg: string; color: string } {
+  if (mime.includes("pdf")) return { icon: "📄", bg: "#fee2e2", color: "#dc2626" };
+  if (mime.includes("word") || mime.includes("doc")) return { icon: "📝", bg: "#dbeafe", color: "#2563eb" };
+  if (mime.includes("sheet") || mime.includes("xls")) return { icon: "📊", bg: "#dcfce7", color: "#16a34a" };
+  return { icon: "📎", bg: "var(--bg-input)", color: "var(--text-sub)" };
 }
 
 export default function FilesPage() {
@@ -99,16 +121,20 @@ export default function FilesPage() {
 
       {/* ตัวกรอง */}
       <div className="flex gap-2 flex-wrap">
-        {CATS.map((c) => (
-          <button key={c} onClick={() => setFilter(c)}
-            className="text-xs sm:text-sm px-3 py-1.5 rounded-full font-medium transition-colors"
-            style={filter === c
-              ? { background: "var(--accent)", color: "white" }
-              : { background: "var(--bg-input)", color: "var(--text-sub)", border: "1px solid var(--border)" }
-            }>
-            {c}
-          </button>
-        ))}
+        {CATS.map((c) => {
+          const cs = catStyle(c);
+          const isActive = filter === c;
+          return (
+            <button key={c} onClick={() => setFilter(c)}
+              className="text-xs sm:text-sm px-3 py-1.5 rounded-full font-medium transition-colors"
+              style={isActive
+                ? { background: "var(--accent)", color: "white" }
+                : { background: "var(--bg-input)", color: "var(--text-sub)", border: "1px solid var(--border)" }
+              }>
+              {c !== "ทั้งหมด" ? `${cs.icon} ` : "📁 "}{c}
+            </button>
+          );
+        })}
       </div>
 
       {/* รายการ */}
@@ -124,24 +150,60 @@ export default function FilesPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {filtered.map((f) => (
-            <div key={f._id} className="card flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl flex items-center justify-center text-xl shrink-0" style={{ background: "var(--bg-input)" }}>
-                {fmtIcon(f.mimeType)}
-              </div>
-              <div className="flex-1 min-w-0">
-                <a href={`/api/files/${f._id}`} target="_blank" rel="noopener noreferrer"
-                  className="font-medium truncate block" style={{ color: "var(--blue)" }}>
-                  {f.originalName}
-                </a>
-                <div className="text-xs" style={{ color: "var(--text-muted)" }}>
-                  {f.category} · {fmtSize(f.size)} · {new Date(f.createdAt).toLocaleDateString("th-TH")}
+          {filtered.map((f) => {
+            const isImage = f.mimeType.startsWith("image/");
+            const style = isImage ? catStyle(f.category) : mimeIcon(f.mimeType);
+            // ใช้ category style ถ้ามี category ที่เจาะจง, ไม่งั้นใช้ mime icon
+            const iconInfo = f.category !== "อื่นๆ" ? catStyle(f.category) : style;
+
+            return (
+              <div key={f._id} className="card flex items-center gap-3 overflow-hidden">
+                {/* Thumbnail หรือ Icon */}
+                {isImage ? (
+                  <a href={`/api/files/${f._id}`} target="_blank" rel="noopener noreferrer" className="shrink-0">
+                    <div className="w-14 h-14 rounded-xl overflow-hidden" style={{ background: "var(--bg-input)" }}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={`/api/files/${f._id}`}
+                        alt={f.originalName}
+                        className="w-full h-full object-cover"
+                        loading="lazy"
+                        onError={(e) => {
+                          // Fallback ถ้าโหลดไม่ได้
+                          const el = e.currentTarget;
+                          el.style.display = "none";
+                          el.parentElement!.innerHTML = `<div class="w-full h-full flex items-center justify-center text-2xl">${iconInfo.icon}</div>`;
+                        }}
+                      />
+                    </div>
+                  </a>
+                ) : (
+                  <div
+                    className="w-14 h-14 rounded-xl flex items-center justify-center text-2xl shrink-0"
+                    style={{ background: iconInfo.bg, color: iconInfo.color }}
+                  >
+                    {iconInfo.icon}
+                  </div>
+                )}
+
+                <div className="flex-1 min-w-0">
+                  <a href={`/api/files/${f._id}`} target="_blank" rel="noopener noreferrer"
+                    className="font-medium truncate block" style={{ color: "var(--blue)" }}>
+                    {f.originalName}
+                  </a>
+                  <div className="text-xs" style={{ color: "var(--text-muted)" }}>
+                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium mr-1"
+                      style={{ background: iconInfo.bg, color: iconInfo.color }}>
+                      {f.category}
+                    </span>
+                    {fmtSize(f.size)} · {new Date(f.createdAt).toLocaleDateString("th-TH")}
+                  </div>
+                  {f.description && <div className="text-xs mt-0.5 truncate" style={{ color: "var(--text-sub)" }}>{f.description}</div>}
                 </div>
-                {f.description && <div className="text-xs mt-0.5" style={{ color: "var(--text-sub)" }}>{f.description}</div>}
+                <button onClick={() => del(f._id)} className="text-xs px-2 py-1 rounded shrink-0 hover:bg-red-50 hover:text-red-500 transition-colors" style={{ color: "var(--text-muted)" }}>🗑️</button>
               </div>
-              <button onClick={() => del(f._id)} className="text-xs px-2 py-1 rounded shrink-0" style={{ color: "var(--text-muted)" }}>ลบ</button>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
