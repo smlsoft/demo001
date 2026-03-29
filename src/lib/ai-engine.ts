@@ -35,7 +35,7 @@ function parseTransaction(msg: string) {
   if (!amountMatch) return null;
 
   const amount = parseFloat(amountMatch[1].replace(/,/g, ""));
-  if (amount <= 0) return null;
+  if (amount <= 0 || amount > 10000000) return null; // จำกัด 10 ล้านบาท
 
   const incomeKw = ["ขาย", "ได้เงิน", "รับเงิน", "เงินเดือน", "ค่าจ้าง", "รับจ้าง", "สวัสดิการ", "เงินช่วย", "รายได้", "ปันผล"];
   const expenseKw = ["ซื้อ", "จ่าย", "ค่า", "ซ่อม", "ทำบุญ", "บริจาค", "เสีย"];

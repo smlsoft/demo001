@@ -80,6 +80,13 @@ export default function DashboardPage() {
 
   useEffect(() => { load(); }, [load]);
 
+  // Auto-refresh เมื่อ focus กลับมา (เช่น สลับจากหน้า AI Chat กลับมา)
+  useEffect(() => {
+    const onFocus = () => load();
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [load]);
+
   function selectPeriod(p: Period) {
     setPeriod(p);
     if (p === "custom") {

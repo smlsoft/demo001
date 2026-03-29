@@ -52,6 +52,8 @@ export default function AiChatPage() {
     setSending(false);
   }
 
+  const [pendingAction, setPendingAction] = useState(false); // มี pending tx รอยืนยัน
+
   async function uploadPhoto(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file || sending) return;
@@ -66,8 +68,31 @@ export default function AiChatPage() {
       const res = await fetch("/api/ai-chat/upload", { method: "POST", body: fd });
       const data = await res.json();
       setMessages((p) => [...p, { role: "assistant", content: data.reply || data.error || "เกิดข้อผิดพลาด" }]);
+      // ถ้าเป็นเอกสารการเงิน → แสดงปุ่มเลือก
+      if (data.action === "vision_financial") {
+        setPendingAction(true);
+      }
     } catch {
       setMessages((p) => [...p, { role: "assistant", content: "วิเคราะห์รูปไม่สำเร็จ ลองใหม่" }]);
+    }
+    setSending(false);
+  }
+
+  // กดปุ่มเลือก รายรับ/รายจ่าย/ยกเลิก
+  async function confirmPending(choice: string) {
+    setPendingAction(false);
+    setMessages((p) => [...p, { role: "user", content: choice }]);
+    setSending(true);
+    try {
+      const res = await fetch("/api/ai-chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: choice, dialect }),
+      });
+      const data = await res.json();
+      setMessages((p) => [...p, { role: "assistant", content: data.reply || "เกิดข้อผิดพลาด" }]);
+    } catch {
+      setMessages((p) => [...p, { role: "assistant", content: "เกิดข้อผิดพลาด" }]);
     }
     setSending(false);
   }
@@ -124,6 +149,26 @@ export default function AiChatPage() {
               </div>
             </div>
           ))
+        )}
+        {/* ปุ่มเลือก รายรับ/รายจ่าย/ยกเลิก */}
+        {pendingAction && !sending && (
+          <div className="flex gap-2 justify-start">
+            <button onClick={() => confirmPending("รายรับ")}
+              className="px-4 py-2.5 rounded-xl font-bold text-white text-sm"
+              style={{ background: "var(--income)" }}>
+              📥 รายรับ
+            </button>
+            <button onClick={() => confirmPending("รายจ่าย")}
+              className="px-4 py-2.5 rounded-xl font-bold text-white text-sm"
+              style={{ background: "var(--expense)" }}>
+              📤 รายจ่าย
+            </button>
+            <button onClick={() => confirmPending("ยกเลิก")}
+              className="px-4 py-2.5 rounded-xl font-bold text-sm"
+              style={{ background: "var(--bg-input)", color: "var(--text-muted)" }}>
+              ❌ ยกเลิก
+            </button>
+          </div>
         )}
         {sending && (
           <div className="flex justify-start">

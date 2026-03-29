@@ -42,6 +42,9 @@ export async function POST(req: NextRequest) {
   if (!date || !description || !amount || !type || !category) {
     return NextResponse.json({ error: "กรุณากรอกข้อมูลให้ครบ" }, { status: 400 });
   }
+  if (amount > 10000000 || amount <= 0) {
+    return NextResponse.json({ error: "จำนวนเงินต้องอยู่ระหว่าง 1 - 10,000,000 บาท" }, { status: 400 });
+  }
 
   await connectDb();
   const tx = await Transaction.create({
