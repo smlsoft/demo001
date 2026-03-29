@@ -82,7 +82,7 @@ export default function FilesPage() {
       </div>
 
       {showUpload && (
-        <form onSubmit={upload} className="card space-y-3">
+        <form onSubmit={upload} className="card space-y-3 lg:max-w-xl">
           <input type="file" required accept="image/*,.pdf,.doc,.docx,.xls,.xlsx" className="w-full text-sm" style={{ color: "var(--text)" }} />
           <select value={cat} onChange={(e) => setCat(e.target.value)} className="w-full border rounded-xl px-4 py-3">
             {UPLOAD_CATS.map((c) => <option key={c} value={c}>{c}</option>)}
@@ -101,7 +101,7 @@ export default function FilesPage() {
       <div className="flex gap-2 flex-wrap">
         {CATS.map((c) => (
           <button key={c} onClick={() => setFilter(c)}
-            className="text-xs px-3 py-1.5 rounded-full font-medium transition-colors"
+            className="text-xs sm:text-sm px-3 py-1.5 rounded-full font-medium transition-colors"
             style={filter === c
               ? { background: "var(--accent)", color: "white" }
               : { background: "var(--bg-input)", color: "var(--text-sub)", border: "1px solid var(--border)" }
@@ -113,7 +113,9 @@ export default function FilesPage() {
 
       {/* รายการ */}
       {loading ? (
-        <div className="space-y-2 animate-pulse">{[1, 2, 3].map((i) => <div key={i} className="card h-16" />)}</div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 animate-pulse">
+          {[1, 2, 3].map((i) => <div key={i} className="card h-20" />)}
+        </div>
       ) : filtered.length === 0 ? (
         <div className="text-center py-16">
           <div className="text-5xl mb-3">📁</div>
@@ -121,10 +123,10 @@ export default function FilesPage() {
           <p className="text-sm" style={{ color: "var(--text-muted)" }}>อัพโหลดที่นี่ หรือส่งรูปผ่าน Telegram</p>
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {filtered.map((f) => (
             <div key={f._id} className="card flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl flex items-center justify-center text-xl" style={{ background: "var(--bg-input)" }}>
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center text-xl shrink-0" style={{ background: "var(--bg-input)" }}>
                 {fmtIcon(f.mimeType)}
               </div>
               <div className="flex-1 min-w-0">
@@ -137,7 +139,7 @@ export default function FilesPage() {
                 </div>
                 {f.description && <div className="text-xs mt-0.5" style={{ color: "var(--text-sub)" }}>{f.description}</div>}
               </div>
-              <button onClick={() => del(f._id)} className="text-xs px-2 py-1 rounded" style={{ color: "var(--text-muted)" }}>ลบ</button>
+              <button onClick={() => del(f._id)} className="text-xs px-2 py-1 rounded shrink-0" style={{ color: "var(--text-muted)" }}>ลบ</button>
             </div>
           ))}
         </div>

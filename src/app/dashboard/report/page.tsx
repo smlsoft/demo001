@@ -38,21 +38,30 @@ export default function ReportPage() {
   const textColor = theme === "dark" ? "#94a3b8" : "#64748b";
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 lg:space-y-6">
       <h1 className="text-2xl font-bold" style={{ color: "var(--text)" }}>รายงาน</h1>
 
       {/* สรุป */}
       <div className="grid grid-cols-3 gap-3">
-        <div className="card text-center"><div className="text-xs" style={{ color: "var(--income)" }}>รายรับ</div><div className="text-xl font-bold" style={{ color: "var(--income)" }}>{data.totalIncome.toLocaleString()}</div></div>
-        <div className="card text-center"><div className="text-xs" style={{ color: "var(--expense)" }}>รายจ่าย</div><div className="text-xl font-bold" style={{ color: "var(--expense)" }}>{data.totalExpense.toLocaleString()}</div></div>
-        <div className="card text-center"><div className="text-xs" style={{ color: "var(--blue)" }}>คงเหลือ</div><div className="text-xl font-bold" style={{ color: "var(--blue)" }}>{data.balance.toLocaleString()}</div></div>
+        <div className="card text-center">
+          <div className="text-xs sm:text-sm" style={{ color: "var(--income)" }}>รายรับ</div>
+          <div className="text-lg sm:text-xl lg:text-2xl font-bold" style={{ color: "var(--income)" }}>{data.totalIncome.toLocaleString()}</div>
+        </div>
+        <div className="card text-center">
+          <div className="text-xs sm:text-sm" style={{ color: "var(--expense)" }}>รายจ่าย</div>
+          <div className="text-lg sm:text-xl lg:text-2xl font-bold" style={{ color: "var(--expense)" }}>{data.totalExpense.toLocaleString()}</div>
+        </div>
+        <div className="card text-center">
+          <div className="text-xs sm:text-sm" style={{ color: "var(--blue)" }}>คงเหลือ</div>
+          <div className="text-lg sm:text-xl lg:text-2xl font-bold" style={{ color: "var(--blue)" }}>{data.balance.toLocaleString()}</div>
+        </div>
       </div>
 
       {/* กราฟแท่ง */}
       {dailyData.length > 0 && (
         <div className="card">
           <h2 className="font-bold mb-3" style={{ color: "var(--text)" }}>รายรับ-รายจ่ายรายวัน</h2>
-          <ResponsiveContainer width="100%" height={220}>
+          <ResponsiveContainer width="100%" height={220} className="sm:!h-[280px] lg:!h-[340px]">
             <BarChart data={dailyData}>
               <XAxis dataKey="date" tick={{ fontSize: 9, fill: textColor }} />
               <YAxis tick={{ fontSize: 9, fill: textColor }} />
@@ -65,13 +74,13 @@ export default function ReportPage() {
       )}
 
       {/* กราฟวงกลม */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 lg:gap-4">
         {incCats.length > 0 && (
           <div className="card">
-            <h2 className="font-bold text-sm mb-2" style={{ color: "var(--text)" }}>สัดส่วนรายรับ</h2>
-            <ResponsiveContainer width="100%" height={160}>
+            <h2 className="font-bold text-sm sm:text-base mb-2" style={{ color: "var(--text)" }}>สัดส่วนรายรับ</h2>
+            <ResponsiveContainer width="100%" height={200} className="sm:!h-[220px] lg:!h-[260px]">
               <PieChart>
-                <Pie data={incCats} cx="50%" cy="50%" outerRadius={55} dataKey="value" label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}>
+                <Pie data={incCats} cx="50%" cy="50%" outerRadius="70%" dataKey="value" label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}>
                   {incCats.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                 </Pie>
                 <Tooltip formatter={(v) => `${Number(v).toLocaleString()} บาท`} />
@@ -81,10 +90,10 @@ export default function ReportPage() {
         )}
         {expCats.length > 0 && (
           <div className="card">
-            <h2 className="font-bold text-sm mb-2" style={{ color: "var(--text)" }}>สัดส่วนรายจ่าย</h2>
-            <ResponsiveContainer width="100%" height={160}>
+            <h2 className="font-bold text-sm sm:text-base mb-2" style={{ color: "var(--text)" }}>สัดส่วนรายจ่าย</h2>
+            <ResponsiveContainer width="100%" height={200} className="sm:!h-[220px] lg:!h-[260px]">
               <PieChart>
-                <Pie data={expCats} cx="50%" cy="50%" outerRadius={55} dataKey="value" label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}>
+                <Pie data={expCats} cx="50%" cy="50%" outerRadius="70%" dataKey="value" label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}>
                   {expCats.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                 </Pie>
                 <Tooltip formatter={(v) => `${Number(v).toLocaleString()} บาท`} />

@@ -29,7 +29,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-4" style={{ background: "var(--bg)" }}>
+    <div className="min-h-screen flex flex-col items-center justify-center p-4 sm:p-6 lg:p-8" style={{ background: "var(--bg)" }}>
       {/* ปุ่มธีม */}
       <button
         onClick={toggle}
@@ -40,12 +40,12 @@ export default function LoginPage() {
       </button>
 
       <div className="text-center mb-8">
-        <div className="text-6xl mb-3">🏡</div>
-        <h1 className="text-3xl font-bold" style={{ color: "var(--text)" }}>บัญชีครัวเรือน</h1>
-        <p className="text-lg mt-1" style={{ color: "var(--text-sub)" }}>บันทึกรายรับ-รายจ่ายง่ายๆ</p>
+        <div className="text-6xl sm:text-7xl mb-3">🏡</div>
+        <h1 className="text-3xl sm:text-4xl font-bold" style={{ color: "var(--text)" }}>บัญชีครัวเรือน</h1>
+        <p className="text-lg sm:text-xl mt-1" style={{ color: "var(--text-sub)" }}>บันทึกรายรับ-รายจ่ายง่ายๆ</p>
       </div>
 
-      <div className="card w-full max-w-md">
+      <div className="card w-full max-w-md sm:max-w-lg">
         <h2 className="text-xl font-bold text-center mb-5" style={{ color: "var(--text)" }}>
           กดเลือกชื่อเพื่อเข้าใช้
         </h2>

@@ -76,17 +76,17 @@ export default function AiChatPage() {
   ];
 
   return (
-    <div className="flex flex-col h-[calc(100vh-140px)]">
+    <div className="flex flex-col h-[calc(100vh-140px)] lg:h-[calc(100vh-48px)] lg:max-w-3xl lg:mx-auto">
       <div className="mb-2">
-        <h1 className="text-xl font-bold" style={{ color: "var(--text)" }}>AI ผู้ช่วยบัญชี</h1>
-        <p className="text-xs" style={{ color: "var(--text-muted)" }}>คุยกับ AI ได้ทุกเรื่อง — บันทึกบัญชี ขอคำแนะนำ ส่งรูป slip</p>
+        <h1 className="text-xl sm:text-2xl font-bold" style={{ color: "var(--text)" }}>AI ผู้ช่วยบัญชี</h1>
+        <p className="text-xs sm:text-sm" style={{ color: "var(--text-muted)" }}>คุยกับ AI ได้ทุกเรื่อง — บันทึกบัญชี ขอคำแนะนำ ส่งรูป slip</p>
       </div>
 
       {/* ปุ่มลัด */}
       <div className="flex gap-2 mb-2 flex-wrap">
         {quick.map((q) => (
           <button key={q.label} onClick={() => setInput(q.msg)}
-            className="text-xs px-3 py-1 rounded-full font-medium"
+            className="text-xs sm:text-sm px-3 sm:px-4 py-1 rounded-full font-medium"
             style={{ background: "var(--accent-light)", color: "var(--accent)", border: "1px solid var(--accent)" }}>
             {q.label}
           </button>
@@ -110,7 +110,7 @@ export default function AiChatPage() {
           messages.map((msg, i) => (
             <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
               <div
-                className="max-w-[85%] rounded-2xl px-4 py-3 text-[15px] whitespace-pre-wrap leading-relaxed"
+                className="max-w-[85%] sm:max-w-[75%] lg:max-w-[65%] rounded-2xl px-4 py-3 text-[15px] sm:text-base whitespace-pre-wrap leading-relaxed"
                 style={msg.role === "user"
                   ? { background: "var(--accent)", color: "white", borderBottomRightRadius: "4px" }
                   : { background: "var(--bg-input)", color: "var(--text)", borderBottomLeftRadius: "4px" }

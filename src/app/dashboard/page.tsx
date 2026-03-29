@@ -81,7 +81,6 @@ export default function DashboardPage() {
     setPeriod(p);
     if (p === "custom") {
       setShowCustom(true);
-      // ค่าเริ่มต้น: เดือนนี้
       const now = new Date();
       const start = new Date(now); start.setDate(1);
       setCustomFrom(toBE(start));
@@ -97,12 +96,12 @@ export default function DashboardPage() {
   const savingRate = s.totalIncome > 0 ? Math.round((s.balance / s.totalIncome) * 100) : 0;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 lg:space-y-6">
       {/* ===== เลือกช่วงเวลา ===== */}
-      <div className="flex gap-1.5 flex-wrap">
+      <div className="flex gap-1.5 sm:gap-2 flex-wrap">
         {PERIODS.map((p) => (
           <button key={p.key} onClick={() => selectPeriod(p.key)}
-            className="text-xs px-3 py-2 rounded-xl font-medium transition-all"
+            className="text-xs sm:text-sm px-3 sm:px-4 py-2 rounded-xl font-medium transition-all"
             style={period === p.key
               ? { background: "var(--accent)", color: "white" }
               : { background: "var(--bg-card)", color: "var(--text-sub)", border: "1px solid var(--border)" }
@@ -135,30 +134,30 @@ export default function DashboardPage() {
           <div className="card">
             <div className="grid grid-cols-3 gap-4 text-center mb-4">
               <div>
-                <div className="text-xs font-medium" style={{ color: "var(--income)" }}>รายรับ</div>
-                <div className="text-2xl font-bold" style={{ color: "var(--income)" }}>{s.totalIncome.toLocaleString()}</div>
-                <div className="text-[10px]" style={{ color: "var(--text-muted)" }}>{s.incomeCount} รายการ</div>
+                <div className="text-xs sm:text-sm font-medium" style={{ color: "var(--income)" }}>รายรับ</div>
+                <div className="text-xl sm:text-2xl lg:text-3xl font-bold" style={{ color: "var(--income)" }}>{s.totalIncome.toLocaleString()}</div>
+                <div className="text-[10px] sm:text-xs" style={{ color: "var(--text-muted)" }}>{s.incomeCount} รายการ</div>
               </div>
               <div>
-                <div className="text-xs font-medium" style={{ color: "var(--expense)" }}>รายจ่าย</div>
-                <div className="text-2xl font-bold" style={{ color: "var(--expense)" }}>{s.totalExpense.toLocaleString()}</div>
-                <div className="text-[10px]" style={{ color: "var(--text-muted)" }}>{s.expenseCount} รายการ</div>
+                <div className="text-xs sm:text-sm font-medium" style={{ color: "var(--expense)" }}>รายจ่าย</div>
+                <div className="text-xl sm:text-2xl lg:text-3xl font-bold" style={{ color: "var(--expense)" }}>{s.totalExpense.toLocaleString()}</div>
+                <div className="text-[10px] sm:text-xs" style={{ color: "var(--text-muted)" }}>{s.expenseCount} รายการ</div>
               </div>
               <div>
-                <div className="text-xs font-medium" style={{ color: "var(--blue)" }}>คงเหลือ</div>
-                <div className="text-2xl font-bold" style={{ color: s.balance >= 0 ? "var(--blue)" : "var(--expense)" }}>{s.balance.toLocaleString()}</div>
-                <div className="text-[10px]" style={{ color: "var(--text-muted)" }}>บาท</div>
+                <div className="text-xs sm:text-sm font-medium" style={{ color: "var(--blue)" }}>คงเหลือ</div>
+                <div className="text-xl sm:text-2xl lg:text-3xl font-bold" style={{ color: s.balance >= 0 ? "var(--blue)" : "var(--expense)" }}>{s.balance.toLocaleString()}</div>
+                <div className="text-[10px] sm:text-xs" style={{ color: "var(--text-muted)" }}>บาท</div>
               </div>
             </div>
 
             {/* แถบอัตราส่วน */}
             {s.totalIncome + s.totalExpense > 0 && (
               <div>
-                <div className="flex h-4 rounded-full overflow-hidden" style={{ background: "var(--bg-input)" }}>
+                <div className="flex h-4 sm:h-5 rounded-full overflow-hidden" style={{ background: "var(--bg-input)" }}>
                   <div className="h-full transition-all" style={{ width: `${Math.round((s.totalIncome / (s.totalIncome + s.totalExpense)) * 100)}%`, background: "var(--income)" }} />
                   <div className="h-full transition-all" style={{ width: `${Math.round((s.totalExpense / (s.totalIncome + s.totalExpense)) * 100)}%`, background: "var(--expense)" }} />
                 </div>
-                <div className="flex justify-between text-[10px] mt-1" style={{ color: "var(--text-muted)" }}>
+                <div className="flex justify-between text-[10px] sm:text-xs mt-1" style={{ color: "var(--text-muted)" }}>
                   <span>รายรับ {s.totalIncome > 0 ? Math.round((s.totalIncome / (s.totalIncome + s.totalExpense)) * 100) : 0}%</span>
                   <span>อัตราออม {savingRate}%</span>
                   <span>รายจ่าย {s.totalExpense > 0 ? Math.round((s.totalExpense / (s.totalIncome + s.totalExpense)) * 100) : 0}%</span>
@@ -167,57 +166,60 @@ export default function DashboardPage() {
             )}
           </div>
 
-          {/* ===== รายรับแยกหมวด ===== */}
-          {incomes.length > 0 && (
-            <div className="card">
-              <h2 className="font-bold mb-3" style={{ color: "var(--text)" }}>📥 รายรับแยกหมวด</h2>
-              <div className="space-y-2">
-                {incomes.map((cat) => {
-                  const pct = s.totalIncome > 0 ? Math.round((cat.total / s.totalIncome) * 100) : 0;
-                  return (
-                    <div key={cat.category} className="flex items-center gap-2">
-                      <div className="flex-1">
-                        <div className="flex justify-between text-sm mb-0.5">
-                          <span style={{ color: "var(--text-sub)" }}>{cat.category}</span>
-                          <span className="font-bold" style={{ color: "var(--income)" }}>{cat.total.toLocaleString()} ({pct}%)</span>
+          {/* ===== รายรับ + รายจ่ายแยกหมวด (side by side on lg) ===== */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
+            {/* รายรับแยกหมวด */}
+            {incomes.length > 0 && (
+              <div className="card">
+                <h2 className="font-bold mb-3" style={{ color: "var(--text)" }}>📥 รายรับแยกหมวด</h2>
+                <div className="space-y-2">
+                  {incomes.map((cat) => {
+                    const pct = s.totalIncome > 0 ? Math.round((cat.total / s.totalIncome) * 100) : 0;
+                    return (
+                      <div key={cat.category} className="flex items-center gap-2">
+                        <div className="flex-1">
+                          <div className="flex justify-between text-sm mb-0.5">
+                            <span style={{ color: "var(--text-sub)" }}>{cat.category}</span>
+                            <span className="font-bold" style={{ color: "var(--income)" }}>{cat.total.toLocaleString()} ({pct}%)</span>
+                          </div>
+                          <div className="w-full h-2 rounded-full" style={{ background: "var(--bg-input)" }}>
+                            <div className="h-2 rounded-full" style={{ width: `${pct}%`, background: "var(--income)" }} />
+                          </div>
                         </div>
-                        <div className="w-full h-2 rounded-full" style={{ background: "var(--bg-input)" }}>
-                          <div className="h-2 rounded-full" style={{ width: `${pct}%`, background: "var(--income)" }} />
-                        </div>
+                        <span className="text-[10px] w-12 text-right" style={{ color: "var(--text-muted)" }}>{cat.count} ครั้ง</span>
                       </div>
-                      <span className="text-[10px] w-12 text-right" style={{ color: "var(--text-muted)" }}>{cat.count} ครั้ง</span>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* ===== รายจ่ายแยกหมวด ===== */}
-          {expenses.length > 0 && (
-            <div className="card">
-              <h2 className="font-bold mb-3" style={{ color: "var(--text)" }}>📤 รายจ่ายแยกหมวด</h2>
-              <div className="space-y-2">
-                {expenses.map((cat) => {
-                  const pct = s.totalExpense > 0 ? Math.round((cat.total / s.totalExpense) * 100) : 0;
-                  return (
-                    <div key={cat.category} className="flex items-center gap-2">
-                      <div className="flex-1">
-                        <div className="flex justify-between text-sm mb-0.5">
-                          <span style={{ color: "var(--text-sub)" }}>{cat.category}</span>
-                          <span className="font-bold" style={{ color: "var(--expense)" }}>{cat.total.toLocaleString()} ({pct}%)</span>
+            {/* รายจ่ายแยกหมวด */}
+            {expenses.length > 0 && (
+              <div className="card">
+                <h2 className="font-bold mb-3" style={{ color: "var(--text)" }}>📤 รายจ่ายแยกหมวด</h2>
+                <div className="space-y-2">
+                  {expenses.map((cat) => {
+                    const pct = s.totalExpense > 0 ? Math.round((cat.total / s.totalExpense) * 100) : 0;
+                    return (
+                      <div key={cat.category} className="flex items-center gap-2">
+                        <div className="flex-1">
+                          <div className="flex justify-between text-sm mb-0.5">
+                            <span style={{ color: "var(--text-sub)" }}>{cat.category}</span>
+                            <span className="font-bold" style={{ color: "var(--expense)" }}>{cat.total.toLocaleString()} ({pct}%)</span>
+                          </div>
+                          <div className="w-full h-2 rounded-full" style={{ background: "var(--bg-input)" }}>
+                            <div className="h-2 rounded-full" style={{ width: `${pct}%`, background: "var(--expense)" }} />
+                          </div>
                         </div>
-                        <div className="w-full h-2 rounded-full" style={{ background: "var(--bg-input)" }}>
-                          <div className="h-2 rounded-full" style={{ width: `${pct}%`, background: "var(--expense)" }} />
-                        </div>
+                        <span className="text-[10px] w-12 text-right" style={{ color: "var(--text-muted)" }}>{cat.count} ครั้ง</span>
                       </div>
-                      <span className="text-[10px] w-12 text-right" style={{ color: "var(--text-muted)" }}>{cat.count} ครั้ง</span>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
 
           {/* ===== รายการยอดสูงสุด ===== */}
           {s.topItems && s.topItems.length > 0 && (
@@ -230,7 +232,7 @@ export default function DashboardPage() {
                     <span className={`w-5 text-center`}>{item.type === "income" ? "📥" : "📤"}</span>
                     <span className="flex-1 truncate" style={{ color: "var(--text)" }}>{item.description}</span>
                     <span className="font-bold" style={{ color: item.type === "income" ? "var(--income)" : "var(--expense)" }}>{item.total.toLocaleString()}</span>
-                    <span className="text-[10px] w-16 text-right" style={{ color: "var(--text-muted)" }}>{item.count} ครั้ง ~{item.avg.toLocaleString()}</span>
+                    <span className="text-[10px] sm:text-xs w-16 sm:w-24 text-right" style={{ color: "var(--text-muted)" }}>{item.count} ครั้ง ~{item.avg.toLocaleString()}</span>
                   </div>
                 ))}
               </div>
@@ -238,7 +240,7 @@ export default function DashboardPage() {
           )}
 
           {/* ===== ปุ่มลัด ===== */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             {[
               { href: "/dashboard/transactions", icon: "📝", label: "บันทึกรายรับ-รายจ่าย" },
               { href: "/dashboard/ai-chat", icon: "🤖", label: "คุยกับน้องบัญชี" },
@@ -246,8 +248,8 @@ export default function DashboardPage() {
               { href: "/dashboard/files", icon: "📁", label: "เอกสาร/รูปภาพ" },
             ].map((item) => (
               <Link key={item.href} href={item.href} className="card text-center hover:scale-[1.02] active:scale-[0.98] transition-transform">
-                <span className="text-3xl block mb-1">{item.icon}</span>
-                <span className="text-sm font-medium" style={{ color: "var(--text)" }}>{item.label}</span>
+                <span className="text-3xl lg:text-4xl block mb-1">{item.icon}</span>
+                <span className="text-sm sm:text-base font-medium" style={{ color: "var(--text)" }}>{item.label}</span>
               </Link>
             ))}
           </div>
@@ -260,8 +262,11 @@ export default function DashboardPage() {
 function Skeleton() {
   return (
     <div className="space-y-4 animate-pulse">
-      <div className="card h-32" />
-      <div className="card h-40" />
+      <div className="card h-32 sm:h-40" />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="card h-40" />
+        <div className="card h-40" />
+      </div>
       <div className="card h-40" />
     </div>
   );

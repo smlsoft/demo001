@@ -10,9 +10,14 @@ export default async function DashboardLayout({ children }: { children: React.Re
   if (!user) redirect("/login");
 
   return (
-    <div className="min-h-screen" style={{ background: "var(--bg)" }}>
+    <div className="min-h-screen dashboard-layout" style={{ background: "var(--bg)" }}>
       <NavBar user={user} />
-      <main className="max-w-lg mx-auto px-4 pt-4 pb-28">{children}</main>
+      {/* Desktop: offset by sidebar width */}
+      <div className="dashboard-main lg:ml-[var(--sidebar-w)]">
+        <main className="max-w-lg sm:max-w-2xl lg:max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 lg:pt-6 pb-28 lg:pb-8">
+          {children}
+        </main>
+      </div>
     </div>
   );
 }
