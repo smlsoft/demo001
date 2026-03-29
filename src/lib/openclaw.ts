@@ -1,15 +1,17 @@
 /**
- * OpenClaw Gateway Client
- * เป็นแกนหลัก AI ของระบบ - เชื่อมต่อ OpenClaw ที่รันใน Docker
- * OpenClaw จัดการ: AI model, memory, context, tools
+ * HiClaw AI Gateway Client
+ * เป็นแกนหลัก AI ของระบบ - เชื่อมต่อ HiClaw (Higress AI Gateway)
+ * HiClaw จัดการ: AI model, multi-agent, security, credential management
  *
- * ถ้า OpenClaw ไม่พร้อม → fallback ไป OpenRouter API
+ * ถ้า HiClaw ไม่พร้อม → แจ้ง error (ไม่มี fallback)
  */
 
-const OPENCLAW_URL = process.env.OPENCLAW_GATEWAY_URL || "http://localhost:18789";
-const OPENCLAW_TOKEN = process.env.OPENCLAW_GATEWAY_TOKEN || "";
+// HiClaw AI Gateway (OpenAI-compatible)
+const HICLAW_URL = process.env.HICLAW_GATEWAY_URL || "";
+const HICLAW_KEY = process.env.HICLAW_GATEWAY_KEY || "";
+const HICLAW_HOST = process.env.HICLAW_GATEWAY_HOST || "aigw-local.hiclaw.io";
 
-// OpenRouter fallback
+// Fallback: OpenRouter (ใช้เมื่อ HiClaw ไม่ได้ตั้ง)
 const AI_API_URL = process.env.AI_API_URL || "";
 const AI_API_KEY = process.env.AI_API_KEY || "";
 const AI_MODEL = process.env.AI_MODEL || "google/gemini-2.5-flash";
@@ -20,41 +22,49 @@ export interface AiResponse {
 }
 
 /**
- * ส่งข้อความไป OpenClaw Gateway (WebSocket → HTTP bridge)
- * OpenClaw ใช้ WebSocket แต่เราจะสร้าง HTTP bridge ผ่าน API route
+ * ส่งข้อความไป HiClaw AI Gateway (OpenAI-compatible)
  */
-async function callOpenClaw(
+async function callHiClaw(
   message: string,
   systemPrompt: string,
   chatHistory: Array<{ role: string; content: string }>
 ): Promise<string | null> {
-  if (!OPENCLAW_URL || !OPENCLAW_TOKEN) return null;
+  if (!HICLAW_URL || !HICLAW_KEY) return null;
 
   try {
-    // ลอง REST API ของ OpenClaw (ถ้ามี)
-    const res = await fetch(`${OPENCLAW_URL}/api/v1/chat`, {
+    const res = await fetch(`${HICLAW_URL}/v1/chat/completions`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${OPENCLAW_TOKEN}`,
+        Authorization: `Bearer ${HICLAW_KEY}`,
+        Host: HICLAW_HOST,
       },
       body: JSON.stringify({
-        message,
-        system: systemPrompt,
-        history: chatHistory.slice(-10),
+        model: AI_MODEL,
+        messages: [
+          { role: "system", content: systemPrompt },
+          ...chatHistory.slice(-30),
+          ...(chatHistory.length === 0 || chatHistory[chatHistory.length - 1]?.content !== message
+            ? [{ role: "user" as const, content: message }]
+            : []),
+        ],
+        max_tokens: 500,
+        temperature: 0.7,
       }),
-      signal: AbortSignal.timeout(15000),
+      signal: AbortSignal.timeout(20000),
     });
 
-    if (res.ok) {
-      const data = await res.json();
-      return data.reply || data.content || data.message || null;
+    if (!res.ok) {
+      const errText = await res.text().catch(() => "");
+      console.error("[HiClaw] error:", res.status, errText.substring(0, 200));
+      return null;
     }
-  } catch {
-    // OpenClaw ไม่พร้อม - fallback
+    const data = await res.json();
+    return data.choices?.[0]?.message?.content || null;
+  } catch (err) {
+    console.error("[HiClaw] fetch error:", err);
+    return null;
   }
-
-  return null;
 }
 
 /**
@@ -110,20 +120,25 @@ async function callOpenRouter(
 
 /**
  * Main AI function - ลองเรียง:
- * 1. OpenClaw (แกนหลัก)
- * 2. OpenRouter (fallback)
- * 3. null (ใช้ local built-in)
+ * 1. HiClaw AI Gateway (แกนหลัก)
+ * 2. OpenRouter (fallback ถ้า HiClaw ไม่ได้ตั้ง)
+ * 3. แจ้ง error ถ้าไม่มี AI พร้อม
  */
 export async function askAI(
   message: string,
   systemPrompt: string,
   chatHistory: Array<{ role: string; content: string }> = []
 ): Promise<AiResponse | null> {
-  // 1. OpenClaw
-  const clawReply = await callOpenClaw(message, systemPrompt, chatHistory);
-  if (clawReply) return { reply: clawReply, source: "openclaw" };
+  // 1. HiClaw AI Gateway (แกนหลัก)
+  if (HICLAW_URL && HICLAW_KEY) {
+    const hiclawReply = await callHiClaw(message, systemPrompt, chatHistory);
+    if (hiclawReply) return { reply: hiclawReply, source: "openclaw" };
+    // HiClaw ตั้งแล้วแต่ fail → แจ้ง error ไม่ fallback
+    console.error("[AI] HiClaw ไม่พร้อม — ไม่มี fallback");
+    return { reply: "⚠️ ระบบ AI (HiClaw) ไม่พร้อมชั่วคราว กรุณาลองใหม่อีกครั้ง", source: "local" };
+  }
 
-  // 2. OpenRouter
+  // 2. OpenRouter (ใช้เมื่อ HiClaw ไม่ได้ตั้ง)
   const routerReply = await callOpenRouter(message, systemPrompt, chatHistory);
   if (routerReply) return { reply: routerReply, source: "openrouter" };
 

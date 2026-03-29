@@ -5,9 +5,10 @@ services:
     build: .
     container_name: demo001-web
     restart: unless-stopped
-    ports:
-      - "3100:3000"
+    network_mode: host
     env_file:
       - .env.local
     environment:
       - NODE_ENV=production
+      - PORT=3100
+      - HOSTNAME=0.0.0.0
