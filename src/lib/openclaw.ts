@@ -32,12 +32,16 @@ async function callHiClaw(
   if (!HICLAW_URL || !HICLAW_KEY) return null;
 
   try {
-    const res = await fetch(`${HICLAW_URL}/v1/chat/completions`, {
+    // ใช้ URL กับ Host header ผ่าน Higress routing
+    // Higress ใช้ Host header เพื่อ route ไปที่ AI provider
+    const url = new URL("/v1/chat/completions", HICLAW_URL);
+
+    const res = await fetch(url.toString(), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${HICLAW_KEY}`,
-        Host: HICLAW_HOST,
+        host: HICLAW_HOST,
       },
       body: JSON.stringify({
         model: AI_MODEL,
