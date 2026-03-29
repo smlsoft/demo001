@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import Script from "next/script";
+import { useState, useEffect, useCallback, useRef } from "react";
 
 declare global {
   interface Window {
@@ -12,14 +11,10 @@ declare global {
 export default function TelegramPage() {
   const [status, setStatus] = useState<"idle" | "linking" | "success" | "error">("idle");
   const [message, setMessage] = useState("");
-  const [botUsername, setBotUsername] = useState("");
   const [linkUrl, setLinkUrl] = useState("");
   const [linkLoading, setLinkLoading] = useState(false);
-
-  // ดึง bot username
-  useEffect(() => {
-    setBotUsername(process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || "ThaiClawBot");
-  }, []);
+  const widgetRef = useRef<HTMLDivElement>(null);
+  const botUsername = "ThaiClawBot";
 
   // Telegram Login Widget callback
   const handleTelegramAuth = useCallback(async (user: any) => {
@@ -44,10 +39,23 @@ export default function TelegramPage() {
     }
   }, []);
 
-  // ตั้ง global callback
+  // ตั้ง global callback + ฝัง Widget ผ่าน DOM
   useEffect(() => {
     window.onTelegramAuth = handleTelegramAuth;
-  }, [handleTelegramAuth]);
+
+    if (widgetRef.current && status === "idle") {
+      widgetRef.current.innerHTML = "";
+      const script = document.createElement("script");
+      script.src = "https://telegram.org/js/telegram-widget.js?23";
+      script.async = true;
+      script.setAttribute("data-telegram-login", botUsername);
+      script.setAttribute("data-size", "large");
+      script.setAttribute("data-radius", "12");
+      script.setAttribute("data-onauth", "onTelegramAuth(user)");
+      script.setAttribute("data-request-access", "write");
+      widgetRef.current.appendChild(script);
+    }
+  }, [handleTelegramAuth, status]);
 
   // สร้าง deep link (ทางเลือก)
   async function generateLink() {
@@ -77,20 +85,8 @@ export default function TelegramPage() {
               กดปุ่มด้านล่าง → เข้าสู่ระบบ Telegram → เชื่อมเสร็จทันที!
             </p>
 
-            {/* Telegram Login Widget */}
-            <div className="flex justify-center py-4">
-              {botUsername && (
-                <Script
-                  src="https://telegram.org/js/telegram-widget.js?23"
-                  data-telegram-login={botUsername}
-                  data-size="large"
-                  data-radius="12"
-                  data-onauth="onTelegramAuth(user)"
-                  data-request-access="write"
-                  strategy="lazyOnload"
-                />
-              )}
-            </div>
+            {/* Telegram Login Widget — ฝังผ่าน DOM */}
+            <div className="flex justify-center py-4" ref={widgetRef} />
 
             <p className="text-xs text-center" style={{ color: "var(--text-muted)" }}>
               กดปุ่ม &quot;Log in with Telegram&quot; ด้านบน

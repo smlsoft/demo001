@@ -146,9 +146,51 @@ export default function LoginPage() {
           </>
         )}
 
+        {/* ===== Email Login ===== */}
+        <div className="mb-5">
+          <h2 className="text-lg font-bold text-center mb-3" style={{ color: "var(--text)" }}>
+            ✉️ เข้าสู่ระบบด้วย Email
+          </h2>
+          <form onSubmit={async (e) => {
+            e.preventDefault();
+            const form = e.target as HTMLFormElement;
+            const emailInput = form.querySelector('input[name="email"]') as HTMLInputElement;
+            const nameInput = form.querySelector('input[name="name"]') as HTMLInputElement;
+            if (!emailInput.value) return;
+            setLoading("email");
+            try {
+              const res = await fetch("/api/auth/email", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email: emailInput.value, name: nameInput.value }),
+              });
+              if (res.ok) router.push("/dashboard");
+            } catch {}
+            setLoading(null);
+          }} className="space-y-2">
+            <input name="email" type="email" required placeholder="Email ของคุณ" className="w-full border rounded-xl px-4 py-3" />
+            <input name="name" type="text" placeholder="ชื่อที่ต้องการแสดง (ไม่บังคับ)" className="w-full border rounded-xl px-4 py-3" />
+            <button type="submit" disabled={loading !== null}
+              className="w-full py-3 rounded-xl text-white font-bold"
+              style={{ background: "var(--accent)", opacity: loading === "email" ? 0.5 : 1 }}>
+              {loading === "email" ? "กำลังเข้าสู่ระบบ..." : "✉️ เข้าสู่ระบบ"}
+            </button>
+          </form>
+          <p className="text-xs text-center mt-2" style={{ color: "var(--text-muted)" }}>
+            ข้อมูลแยกตาม Email — ไม่ต้องรหัสผ่าน
+          </p>
+        </div>
+
+        {/* Divider */}
+        <div className="flex items-center gap-3 mb-5">
+          <div className="flex-1 h-px" style={{ background: "var(--border)" }} />
+          <span className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>หรือ ทดลองใช้</span>
+          <div className="flex-1 h-px" style={{ background: "var(--border)" }} />
+        </div>
+
         {/* ===== Demo Users (ของเดิม) ===== */}
         <h2 className="text-xl font-bold text-center mb-5" style={{ color: "var(--text)" }}>
-          {googleClientId ? "เลือกบัญชีทดลอง" : "กดเลือกชื่อเพื่อเข้าใช้"}
+          เลือกบัญชีทดลอง
         </h2>
         <div className="space-y-3">
           {DEMO_USERS.map((u) => (
