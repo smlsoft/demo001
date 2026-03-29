@@ -55,7 +55,7 @@ async function callHiClaw(
         max_tokens: 500,
         temperature: 0.7,
       }),
-      signal: AbortSignal.timeout(20000),
+      signal: AbortSignal.timeout(45000), // HiClaw + OpenRouter อาจช้า
     });
 
     if (!res.ok) {
@@ -65,8 +65,8 @@ async function callHiClaw(
     }
     const data = await res.json();
     return data.choices?.[0]?.message?.content || null;
-  } catch (err) {
-    console.error("[HiClaw] fetch error:", err);
+  } catch (err: any) {
+    console.error("[HiClaw] fetch error:", err?.message || err);
     return null;
   }
 }

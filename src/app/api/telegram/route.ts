@@ -8,7 +8,7 @@ import { DEMO_USERS } from "@/lib/demo-users";
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || "";
 
 // Telegram webhook timeout = 60 วินาที เราต้องตอบก่อน
-const MAX_PROCESS_TIME = 25000; // 25 วินาที
+const MAX_PROCESS_TIME = 50000; // 50 วินาที (HiClaw + OpenRouter อาจช้า)
 
 /**
  * Telegram Webhook
