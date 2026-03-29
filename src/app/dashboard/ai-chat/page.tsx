@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { VoiceInput } from "@/components/VoiceInput";
+import { useTheme } from "@/lib/theme";
 
 interface Message {
   _id?: string;
@@ -10,6 +11,7 @@ interface Message {
 }
 
 export default function AiChatPage() {
+  const { dialect } = useTheme();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
@@ -39,7 +41,7 @@ export default function AiChatPage() {
       const res = await fetch("/api/ai-chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text }),
+        body: JSON.stringify({ message: text, dialect }),
       });
       const data = await res.json();
       setMessages((p) => [...p, { role: "assistant", content: data.reply || data.error || "เกิดข้อผิดพลาด" }]);

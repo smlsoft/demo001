@@ -12,7 +12,14 @@ interface Props {
 export function NavBar({ user }: Props) {
   const pathname = usePathname();
   const router = useRouter();
-  const { theme, toggle } = useTheme();
+  const { theme, toggle, dialect, setDialect } = useTheme();
+
+  const dialects = [
+    { key: "central" as const, label: "กลาง", flag: "🇹🇭" },
+    { key: "isan" as const, label: "อีสาน", flag: "🏮" },
+    { key: "northern" as const, label: "เหนือ", flag: "🏔️" },
+    { key: "southern" as const, label: "ใต้", flag: "🌊" },
+  ];
 
   async function logout() {
     await fetch("/api/auth", { method: "DELETE" });
@@ -113,6 +120,19 @@ export function NavBar({ user }: Props) {
             <span className="text-xl">{theme === "light" ? "🌙" : "☀️"}</span>
             <span className="font-medium">{theme === "light" ? "โหมดมืด" : "โหมดสว่าง"}</span>
           </button>
+          {/* เลือกภาษาถิ่น */}
+          <div className="flex gap-1 px-2">
+            {dialects.map((d) => (
+              <button key={d.key} onClick={() => setDialect(d.key)}
+                className="flex-1 py-2 rounded-lg text-center text-xs font-medium transition-colors"
+                style={{
+                  background: dialect === d.key ? "var(--accent)" : "var(--bg-input)",
+                  color: dialect === d.key ? "white" : "var(--text-muted)",
+                }}>
+                {d.flag} {d.label}
+              </button>
+            ))}
+          </div>
           <Link href="/"
             className="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors"
             style={{ background: "var(--bg-input)", color: "var(--text-sub)" }}

@@ -15,6 +15,7 @@ import { Budget } from "./models/Budget";
 import { SavingsGoal } from "./models/SavingsGoal";
 import { Debt } from "./models/Debt";
 import { Reminder } from "./models/Reminder";
+import { getDialectPrompt } from "./i18n";
 import { analyzeImage, buildVisionReply, VisionResult } from "./vision";
 import { getCompactHistory } from "./chat-compact";
 import { FileDoc } from "./models/FileDoc";
@@ -183,7 +184,8 @@ ${recent || "(ยังไม่มี)"}
 
 export async function processMessage(
   message: string,
-  userId: string
+  userId: string,
+  dialect?: string
 ): Promise<AiResult> {
   await connectDb();
   const msg = message.trim();
@@ -264,7 +266,11 @@ export async function processMessage(
 
   // 5. AI (OpenClaw → OpenRouter → Fallback)
   // ใช้ compact history: [สรุปเก่า] + [ข้อความล่าสุด] ประหยัด token
-  const systemPrompt = await buildSystemPrompt(userId);
+  let systemPrompt = await buildSystemPrompt(userId);
+  // เพิ่มคำสั่งภาษาถิ่นถ้าเลือก
+  if (dialect && dialect !== "central") {
+    systemPrompt += getDialectPrompt(dialect as any);
+  }
   const chatHistory = await getCompactHistory(userId);
 
   const aiResult = await askAI(msg, systemPrompt, chatHistory);
@@ -391,10 +397,10 @@ export async function handleImage(
 /**
  * จัดการข้อความ text
  */
-export async function handleChat(message: string, userId: string): Promise<AiResult> {
+export async function handleChat(message: string, userId: string, dialect?: string): Promise<AiResult> {
   await connectDb();
   await ChatMessage.create({ userId, role: "user", content: message });
-  const result = await processMessage(message, userId);
+  const result = await processMessage(message, userId, dialect);
   await ChatMessage.create({ userId, role: "assistant", content: result.reply, action: result.action });
   return result;
 }

@@ -19,9 +19,9 @@ export async function POST(req: NextRequest) {
   const userId = await getSessionUserId();
   if (!userId) return NextResponse.json({ error: "กรุณาเข้าสู่ระบบ" }, { status: 401 });
 
-  const { message } = await req.json();
+  const { message, dialect } = await req.json();
   if (!message?.trim()) return NextResponse.json({ error: "กรุณาพิมพ์ข้อความ" }, { status: 400 });
 
-  const result = await handleChat(message, userId);
+  const result = await handleChat(message, userId, dialect);
   return NextResponse.json(result);
 }
