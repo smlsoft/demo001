@@ -6,6 +6,8 @@ services:
     container_name: demo001-web
     restart: unless-stopped
     network_mode: host
+    extra_hosts:
+      - "aigw-local.hiclaw.io:127.0.0.1"
     env_file:
       - .env.local
     environment:

@@ -17,8 +17,9 @@ model: claude-opus-4-6
    - งานใหญ่ (feature ใหม่, refactor) → สร้างทีม 3-5 คน
 3. **แบ่งงานตามไฟล์** — ห้าม 2 teammates แก้ไฟล์เดียวกัน
 4. **ใช้ Explore agent สำหรับ research** และ **general-purpose agent สำหรับ implement**
-5. เมื่อ teammates เสร็จ → สรุปผลให้ user สั้นกระชับ
-6. **Shutdown ทีมทันที** เมื่องานเสร็จ
+5. **Teammates ใช้ model: "sonnet"** เสมอ (ประหยัด 5x) — Lead เท่านั้นที่ใช้ Opus
+6. เมื่อ teammates เสร็จ → สรุปผลให้ user สั้นกระชับ
+7. **Shutdown ทีมทันที + TeamDelete** เมื่องานเสร็จ
 
 ## ขั้นตอนอัตโนมัติ
 
