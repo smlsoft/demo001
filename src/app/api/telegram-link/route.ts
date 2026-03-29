@@ -32,7 +32,7 @@ export async function POST() {
   const code = crypto.randomBytes(6).toString("hex"); // 12 chars
   await LinkCode.create({ code, userId });
 
-  const botUsername = process.env.TELEGRAM_BOT_USERNAME || "ThaiClawBot";
+  const botUsername = process.env.TELEGRAM_BOT_USERNAME || "jeadtest001bot";
   const link = `https://t.me/${botUsername}?start=LINK_${code}`;
 
   return NextResponse.json({ code, link, expiresIn: "10 นาที" });

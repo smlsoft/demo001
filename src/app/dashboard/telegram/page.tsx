@@ -14,7 +14,7 @@ export default function TelegramPage() {
   const [linkUrl, setLinkUrl] = useState("");
   const [linkLoading, setLinkLoading] = useState(false);
   const widgetRef = useRef<HTMLDivElement>(null);
-  const botUsername = "ThaiClawBot";
+  const botUsername = "jeadtest001bot";
 
   // Telegram Login Widget callback
   const handleTelegramAuth = useCallback(async (user: any) => {
