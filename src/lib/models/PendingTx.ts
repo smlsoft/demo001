@@ -12,6 +12,7 @@ export interface IPendingTx extends Document {
   imageInfo: string;
   visionResult: string; // JSON ผลวิเคราะห์จาก AI (audit trail)
   fileId: string; // เชื่อม FileDoc._id ของ slip
+  editTxId: string; // ถ้ามีค่า = กำลังแก้ไข transaction นี้ (ไม่ใช่สร้างใหม่)
   expiresAt: Date;
   createdAt: Date;
 }
@@ -25,6 +26,7 @@ const PendingTxSchema = new Schema<IPendingTx>(
     imageInfo: { type: String, default: "" },
     visionResult: { type: String, default: "" }, // เก็บ JSON ผลวิเคราะห์เต็ม
     fileId: { type: String, default: "" }, // เชื่อมกับ FileDoc._id
+    editTxId: { type: String, default: "" }, // ถ้ามี = แก้ไข tx นี้แทนสร้างใหม่
     expiresAt: { type: Date, default: () => new Date(Date.now() + 30 * 60 * 1000) },
   },
   { timestamps: true }

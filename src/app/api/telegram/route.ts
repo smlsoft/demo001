@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { handleChat, handlePhoto } from "@/lib/ai-engine";
+import { handleChat, handlePhoto, deleteTransaction, startEditTransaction } from "@/lib/ai-engine";
 import { getTelegramUserId, registerTelegramUser } from "@/lib/telegram-users";
 import { connectDb } from "@/lib/db";
 import { seedDemoData } from "@/lib/seed";
@@ -223,15 +223,33 @@ async function processUpdate(update: any) {
     if (result.action === "vision_financial" || result.action === "clarify") {
       await sendTelegram(chatId, result.reply, {
         inline_keyboard: [
-          [
-            { text: "✅ รายรับ (เงินเข้า)", callback_data: "confirm:income" },
-          ],
-          [
-            { text: "🔴 รายจ่าย (เงินออก)", callback_data: "confirm:expense" },
-          ],
-          [
-            { text: "❌ ยกเลิก ไม่บันทึก", callback_data: "confirm:cancel" },
-          ],
+          [{ text: "✅ รายรับ (เงินเข้า)", callback_data: "confirm:income" }],
+          [{ text: "🔴 รายจ่าย (เงินออก)", callback_data: "confirm:expense" }],
+          [{ text: "❌ ยกเลิก ไม่บันทึก", callback_data: "confirm:cancel" }],
+        ],
+      });
+    } else if (result.action === "delete_select" && result.transaction) {
+      // แสดงรายการ + ปุ่มเลือกลบ
+      const txList = result.transaction as any[];
+      await sendTelegram(chatId, result.reply, {
+        inline_keyboard: [
+          ...txList.map((t: any, i: number) => [{
+            text: `🗑️ ${i + 1}. ${t.description} ${t.amount.toLocaleString()}`,
+            callback_data: `del:${t._id}`,
+          }]),
+          [{ text: "❌ ยกเลิก", callback_data: "confirm:cancel" }],
+        ],
+      });
+    } else if (result.action === "edit_select" && result.transaction) {
+      // แสดงรายการ + ปุ่มเลือกแก้ไข
+      const txList = result.transaction as any[];
+      await sendTelegram(chatId, result.reply, {
+        inline_keyboard: [
+          ...txList.map((t: any, i: number) => [{
+            text: `✏️ ${i + 1}. ${t.description} ${t.amount.toLocaleString()}`,
+            callback_data: `edit:${t._id}`,
+          }]),
+          [{ text: "❌ ยกเลิก", callback_data: "confirm:cancel" }],
         ],
       });
     } else {
@@ -265,10 +283,74 @@ async function handleCallback(cb: any) {
 
       try {
         const result = await withTimeout(handleChat(msg, userId), MAX_PROCESS_TIME);
-        await sendTelegram(chatId, result.reply);
+        // ถ้าเป็น edit pending ที่ต้องยืนยัน → ส่งปุ่มกด
+        if (result.action === "vision_financial") {
+          await sendTelegram(chatId, result.reply, {
+            inline_keyboard: [
+              [{ text: "✅ รายรับ (เงินเข้า)", callback_data: "confirm:income" }],
+              [{ text: "🔴 รายจ่าย (เงินออก)", callback_data: "confirm:expense" }],
+              [{ text: "❌ ยกเลิก", callback_data: "confirm:cancel" }],
+            ],
+          });
+        } else {
+          await sendTelegram(chatId, result.reply);
+        }
       } catch {
         await sendTelegram(chatId, `เกิดข้อผิดพลาด ลองใหม่`);
       }
+    }
+  }
+
+  // === เลือกรายการที่จะลบ → แสดงยืนยัน ===
+  if (data.startsWith("del:") && chatId) {
+    const userId = await getTelegramUserId(telegramId);
+    if (!userId) { await sendTelegram(chatId, `กรุณากด /start ก่อนนะคะ`); }
+    else {
+      const txId = data.replace("del:", "");
+      try {
+        const { Transaction } = await import("@/lib/models/Transaction");
+        const tx = await Transaction.findOne({ _id: txId, userId }).lean() as any;
+        if (!tx) {
+          await sendTelegram(chatId, "ไม่พบรายการนี้ค่ะ");
+        } else {
+          const typeLabel = tx.type === "income" ? "📥 รายรับ" : "📤 รายจ่าย";
+          await sendTelegram(chatId,
+            `⚠️ ยืนยันลบรายการนี้?\n\n${typeLabel}: ${tx.description}\n💰 ${tx.amount.toLocaleString()} บาท\n📅 ${tx.date}`,
+            {
+              inline_keyboard: [
+                [{ text: "🗑️ ยืนยันลบ", callback_data: `delok:${txId}` }],
+                [{ text: "❌ ยกเลิก", callback_data: "confirm:cancel" }],
+              ],
+            }
+          );
+        }
+      } catch { await sendTelegram(chatId, "เกิดข้อผิดพลาด ลองใหม่"); }
+    }
+  }
+
+  // === ยืนยันลบจริง ===
+  if (data.startsWith("delok:") && chatId) {
+    const userId = await getTelegramUserId(telegramId);
+    if (!userId) { await sendTelegram(chatId, `กรุณากด /start ก่อนนะคะ`); }
+    else {
+      const txId = data.replace("delok:", "");
+      try {
+        const result = await withTimeout(deleteTransaction(txId, userId), MAX_PROCESS_TIME);
+        await sendTelegram(chatId, result.reply);
+      } catch { await sendTelegram(chatId, "เกิดข้อผิดพลาด ลองใหม่"); }
+    }
+  }
+
+  // === เลือกรายการที่จะแก้ไข → เริ่ม edit flow ===
+  if (data.startsWith("edit:") && chatId) {
+    const userId = await getTelegramUserId(telegramId);
+    if (!userId) { await sendTelegram(chatId, `กรุณากด /start ก่อนนะคะ`); }
+    else {
+      const txId = data.replace("edit:", "");
+      try {
+        const result = await withTimeout(startEditTransaction(txId, userId), MAX_PROCESS_TIME);
+        await sendTelegram(chatId, result.reply);
+      } catch { await sendTelegram(chatId, "เกิดข้อผิดพลาด ลองใหม่"); }
     }
   }
 

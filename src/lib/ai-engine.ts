@@ -173,8 +173,17 @@ ${recent || "(ยังไม่มี)"}
 
 วันนี้: ${toBuddhistYear(new Date())}
 
+กฎเหล็ก — ยืนยันก่อนแตะฐานข้อมูลทุกครั้ง:
+- ห้ามบันทึกรายรับ/รายจ่ายโดยไม่ถามยืนยันก่อน
+- ห้ามลบรายการโดยไม่ถามยืนยันก่อน
+- ห้ามแก้ไขรายการโดยไม่ถามยืนยันก่อน
+- ถ้าเจ้านายแค่เล่าเรื่องเงิน/ถามคำแนะนำ → ห้ามบันทึก ให้คุยตอบปกติ
+- ตัวอย่าง: "ได้เงิน 900 บาท ทำยังไงดี" = ถามคำแนะนำ ไม่ใช่สั่งบันทึก
+
 สิ่งที่น้องบัญชีทำได้:
-- จดบันทึกรายรับ-รายจ่ายให้ (เขาจะพิมพ์มา ระบบจัดการให้อัตโนมัติ)
+- จดบันทึกรายรับ-รายจ่ายให้ (ต้องถามยืนยันก่อนบันทึกทุกครั้ง)
+- ลบรายการที่บันทึกผิด (ต้องถามยืนยันก่อนลบ)
+- แก้ไขรายการที่บันทึกไว้ (ต้องถามยืนยันก่อนแก้)
 - สรุปยอดบัญชี + สรุปงบประมาณ
 - อ่านรูป slip/ใบเสร็จ
 - ให้คำแนะนำการเงิน การออม เรื่องทั่วไป
@@ -194,27 +203,51 @@ export async function processMessage(
   await connectDb();
   const msg = message.trim();
 
-  // 0. ตรวจว่ามี pending transaction จากรูปภาพ รอยืนยันอยู่ไหม
+  // 0. ตรวจว่ามี pending transaction รอยืนยันอยู่ไหม (ทั้ง record ใหม่ + edit)
   const pending = await PendingTx.findOne({ userId }).sort({ createdAt: -1 });
   if (pending) {
     const lower = msg.toLowerCase();
+    const isEdit = !!pending.editTxId; // กำลังแก้ไข (ไม่ใช่สร้างใหม่)
+
     if (/^(ใช่|ใช้|ตกลง|ok|yes|บันทึก|ได้|เอา)/.test(lower)) {
-      // ยืนยันตาม suggestedType
       const type = pending.suggestedType === "unknown" ? "expense" : pending.suggestedType;
-      return await confirmPendingTx(pending, type, userId);
+      return isEdit ? await confirmEditTx(pending, type, userId) : await confirmPendingTx(pending, type, userId);
     }
     if (/รายรับ|income|เงินเข้า|ได้เงิน/.test(lower)) {
-      return await confirmPendingTx(pending, "income", userId);
+      return isEdit ? await confirmEditTx(pending, "income", userId) : await confirmPendingTx(pending, "income", userId);
     }
     if (/รายจ่าย|expense|จ่ายเงิน|เงินออก/.test(lower)) {
-      return await confirmPendingTx(pending, "expense", userId);
+      return isEdit ? await confirmEditTx(pending, "expense", userId) : await confirmPendingTx(pending, "expense", userId);
     }
     if (/ไม่|ยกเลิก|cancel|skip/.test(lower)) {
       await PendingTx.deleteOne({ _id: pending._id });
-      return { reply: "ยกเลิกแล้วค่ะ ไม่บันทึกรายการนี้", action: "cancelled" };
+      return { reply: isEdit ? "ยกเลิกการแก้ไขแล้วค่ะ" : "ยกเลิกแล้วค่ะ ไม่บันทึกรายการนี้", action: "cancelled" };
     }
-    // ถ้าพิมพ์อย่างอื่น ลบ pending แล้วประมวลผลปกติ
-    await PendingTx.deleteOne({ _id: pending._id });
+
+    // กำลัง edit → user พิมพ์ข้อมูลใหม่มา → parse แล้วถามยืนยัน
+    if (isEdit) {
+      const parsed = parseTransaction(msg);
+      if (parsed) {
+        // อัพเดท pending ด้วยข้อมูลใหม่
+        pending.amount = parsed.amount;
+        pending.description = parsed.description;
+        pending.suggestedType = parsed.type;
+        await pending.save();
+
+        const suggestion = parsed.type === "income" ? "📥 รายรับ" : "📤 รายจ่าย";
+        return {
+          reply: `✏️ แก้ไขเป็น:\n${suggestion}: ${parsed.description}\n💰 จำนวน: ${parsed.amount.toLocaleString()} บาท\n\nกดเลือก: รายรับ / รายจ่าย / ยกเลิก`,
+          action: "vision_financial",
+        };
+      }
+      // parse ไม่ได้ → ลอง AI classify
+      // ไม่ลบ pending ให้ fall through ไป AI classify
+    }
+
+    // ถ้าพิมพ์อย่างอื่น (ไม่ใช่ edit) ลบ pending แล้วประมวลผลปกติ
+    if (!isEdit) {
+      await PendingTx.deleteOne({ _id: pending._id });
+    }
   }
 
   // 1. ส่ง AI วิเคราะห์ว่า user ต้องการทำอะไร (intent classification)
@@ -224,7 +257,7 @@ export async function processMessage(
     const classifyResult = await askAI(
       `วิเคราะห์ข้อความนี้แล้วตอบเป็น JSON เท่านั้น (ไม่ต้องมี markdown):
 {
-  "intent": "record" หรือ "summary" หรือ "list" หรือ "delete" หรือ "chat",
+  "intent": "record" หรือ "summary" หรือ "list" หรือ "delete" หรือ "edit" หรือ "chat",
   "amount": ตัวเลขจำนวนเงิน (ถ้ามี, ไม่มีใส่ 0),
   "description": "คำอธิบายรายการสั้นๆ",
   "type": "income" หรือ "expense" หรือ "unknown",
@@ -233,13 +266,15 @@ export async function processMessage(
 }
 
 กฎ:
-- intent="record": ต้องการบันทึกรายรับหรือรายจ่าย (มีจำนวนเงิน)
+- intent="record": ต้องการบันทึกรายรับหรือรายจ่าย (มีจำนวนเงินชัดเจน + บอกว่าจะบันทึก)
 - intent="summary": ต้องการดูสรุปยอด/ยอดคงเหลือ/รายรับรวม/รายจ่ายรวม
 - intent="list": ต้องการดูรายการล่าสุด/ประวัติ
 - intent="delete": ต้องการลบ/ยกเลิกรายการ
-- intent="chat": คุยทั่วไป ไม่เกี่ยวกับบัญชี
+- intent="edit": ต้องการแก้ไข/เปลี่ยนแปลง/อัพเดทรายการที่บันทึกไว้แล้ว
+- intent="chat": คุยทั่วไป ไม่เกี่ยวกับบัญชี หรือแค่ถามคำถาม/ขอคำแนะนำ
 - type: ถ้าเป็นเงินเข้า/รับ/ขาย/ให้มา = "income", ถ้าจ่าย/ซื้อ/ค่า = "expense"
 - confidence="low": ถ้าไม่แน่ใจว่ารายรับหรือรายจ่าย
+- สำคัญ: ถ้าแค่ถาม/เล่า/ขอคำแนะนำเรื่องเงิน (เช่น "ได้เงินมา ทำยังไงดี") = "chat" ไม่ใช่ "record"
 
 ข้อความ: "${msg}"`,
       "ตอบเป็น JSON เท่านั้น",
@@ -287,40 +322,47 @@ export async function processMessage(
     return { reply: `📋 รายการล่าสุด:\n${list}`, action: "list" };
   }
 
-  // === ลบรายการ → ดึง DB + แสดงรายการล่าสุด ===
+  // === ลบรายการ → แสดงรายการ + ปุ่มเลือกลบ ===
   if (aiIntent.intent === "delete") {
     const recent = await Transaction.find({ userId }).sort({ createdAt: -1 }).limit(5).lean();
     if (recent.length === 0) return { reply: "ยังไม่มีรายการที่จะลบค่ะ", action: "list" };
-    const list = recent.map((t: any, i: number) => `${i + 1}. ${t.type === "income" ? "📥" : "📤"} ${t.description} - ${t.amount.toLocaleString()} บาท`).join("\n");
-    return { reply: `📋 รายการล่าสุด:\n${list}\n\nกรุณาไปที่หน้า "บันทึก" เพื่อลบรายการค่ะ`, action: "list" };
+    const list = recent.map((t: any, i: number) =>
+      `${i + 1}. ${t.type === "income" ? "📥" : "📤"} ${t.description} - ${t.amount.toLocaleString()} บาท`
+    ).join("\n");
+    return {
+      reply: `🗑️ เลือกรายการที่ต้องการลบ:\n${list}`,
+      action: "delete_select",
+      transaction: recent, // ส่ง list ออกไปให้ Telegram สร้างปุ่ม
+    };
   }
 
-  // === บันทึกรายการ → AI วิเคราะห์แล้ว ให้ user ยืนยัน ===
+  // === แก้ไขรายการ → แสดงรายการ + ปุ่มเลือกแก้ ===
+  if (aiIntent.intent === "edit") {
+    const recent = await Transaction.find({ userId }).sort({ createdAt: -1 }).limit(5).lean();
+    if (recent.length === 0) return { reply: "ยังไม่มีรายการที่จะแก้ไขค่ะ", action: "list" };
+    const list = recent.map((t: any, i: number) =>
+      `${i + 1}. ${t.type === "income" ? "📥" : "📤"} ${t.description} - ${t.amount.toLocaleString()} บาท`
+    ).join("\n");
+    return {
+      reply: `✏️ เลือกรายการที่ต้องการแก้ไข:\n${list}`,
+      action: "edit_select",
+      transaction: recent, // ส่ง list ออกไปให้ Telegram สร้างปุ่ม
+    };
+  }
+
+  // === บันทึกรายการ → ต้องยืนยันทุกครั้ง (ไม่ว่า confidence จะเป็นอะไร) ===
   if (aiIntent.intent === "record" && aiIntent.amount > 0 && aiIntent.amount <= 10000000) {
     const desc = aiIntent.description || msg;
     const amount = aiIntent.amount;
     const suggestedType = aiIntent.type || "unknown";
-    const category = aiIntent.category || (suggestedType === "income" ? "รายได้อาชีพหลัก" : "อาหาร/ของใช้");
 
-    // ถ้า AI มั่นใจสูง → บันทึกเลย
-    if (aiIntent.confidence === "high" && suggestedType !== "unknown") {
-      const today = toBuddhistYear(new Date());
-      const saved = await Transaction.create({ userId, date: today, description: desc, amount, type: suggestedType, category });
-      const typeLabel = suggestedType === "income" ? "📥 รายรับ" : "📤 รายจ่าย";
-      return {
-        reply: `✅ บันทึกแล้ว!\n${typeLabel}: ${desc}\n💰 จำนวน: ${amount.toLocaleString()} บาท\n📁 หมวด: ${category}\n📅 วันที่: ${today}`,
-        action: "saved",
-        transaction: { id: saved._id, date: today, description: desc, amount, type: suggestedType, category },
-      };
-    }
-
-    // ถ้า AI ไม่มั่นใจ → สร้าง pending + ถาม user
+    // สร้าง pending ทุกครั้ง → ถาม user ยืนยันก่อนบันทึก
     await PendingTx.deleteMany({ userId });
     await PendingTx.create({ userId, amount, description: desc, suggestedType });
 
-    const suggestion = suggestedType === "income" ? "📥 AI แนะนำ: น่าจะเป็น *รายรับ*"
-      : suggestedType === "expense" ? "📤 AI แนะนำ: น่าจะเป็น *รายจ่าย*"
-      : "❓ AI ไม่แน่ใจว่าเป็นรายรับหรือรายจ่าย";
+    const suggestion = suggestedType === "income" ? "📥 น่าจะเป็น *รายรับ*"
+      : suggestedType === "expense" ? "📤 น่าจะเป็น *รายจ่าย*"
+      : "❓ ไม่แน่ใจว่าเป็นรายรับหรือรายจ่าย";
 
     return {
       reply: `💰 ${desc} ${amount.toLocaleString()} บาท\n${suggestion}\n\nกดเลือก: รายรับ / รายจ่าย / ยกเลิก`,
@@ -487,4 +529,77 @@ export async function handleChat(message: string, userId: string, dialect?: stri
  */
 export async function handlePhoto(imageBase64: string, mimeType: string, userId: string, source: string = "web"): Promise<AiResult> {
   return handleImage(imageBase64, mimeType, userId, source);
+}
+
+// --------- Delete Transaction (ยืนยันแล้ว) ---------
+
+export async function deleteTransaction(txId: string, userId: string): Promise<AiResult> {
+  await connectDb();
+  const tx = await Transaction.findOne({ _id: txId, userId }).lean() as any;
+  if (!tx) return { reply: "ไม่พบรายการนี้ค่ะ อาจถูกลบไปแล้ว", action: "error" };
+
+  await Transaction.deleteOne({ _id: txId, userId });
+  const typeLabel = tx.type === "income" ? "📥 รายรับ" : "📤 รายจ่าย";
+
+  const reply = `🗑️ ลบแล้ว!\n${typeLabel}: ${tx.description}\n💰 จำนวน: ${tx.amount.toLocaleString()} บาท`;
+  await ChatMessage.create({ userId, role: "assistant", content: reply, action: "deleted" });
+
+  return { reply, action: "deleted" };
+}
+
+// --------- Start Edit Transaction (สร้าง pending edit) ---------
+
+export async function startEditTransaction(txId: string, userId: string): Promise<AiResult> {
+  await connectDb();
+  const tx = await Transaction.findOne({ _id: txId, userId }).lean() as any;
+  if (!tx) return { reply: "ไม่พบรายการนี้ค่ะ", action: "error" };
+
+  // สร้าง PendingTx แบบ edit (มี editTxId)
+  await PendingTx.deleteMany({ userId });
+  await PendingTx.create({
+    userId,
+    amount: tx.amount,
+    description: tx.description,
+    suggestedType: tx.type,
+    editTxId: txId,
+  });
+
+  const typeLabel = tx.type === "income" ? "📥 รายรับ" : "📤 รายจ่าย";
+  return {
+    reply: `✏️ แก้ไขรายการ:\n${typeLabel}: ${tx.description} - ${tx.amount.toLocaleString()} บาท\n\nพิมพ์ข้อมูลใหม่ เช่น:\n"ค่าอาหาร 200 บาท"\n"รายรับ ขายของ 500 บาท"\n\nหรือพิมพ์ "ยกเลิก" เพื่อไม่แก้ไข`,
+    action: "edit_pending",
+  };
+}
+
+// --------- Confirm Edit Transaction ---------
+
+async function confirmEditTx(
+  pending: any,
+  type: "income" | "expense",
+  userId: string
+): Promise<AiResult> {
+  const today = toBuddhistYear(new Date());
+  const category = type === "income" ? "รายได้อาชีพหลัก" : "อาหาร/ของใช้";
+
+  await Transaction.updateOne(
+    { _id: pending.editTxId, userId },
+    {
+      $set: {
+        description: pending.description,
+        amount: pending.amount,
+        type,
+        category,
+        date: today,
+      },
+    }
+  );
+
+  await PendingTx.deleteOne({ _id: pending._id });
+
+  const typeLabel = type === "income" ? "รายรับ" : "รายจ่าย";
+  return {
+    reply: `✅ แก้ไขแล้ว!\n${typeLabel}: ${pending.description}\nจำนวน: ${pending.amount.toLocaleString()} บาท\nหมวด: ${category}\nวันที่: ${today}`,
+    action: "edited",
+    transaction: { id: pending.editTxId, date: today, description: pending.description, amount: pending.amount, type, category },
+  };
 }
