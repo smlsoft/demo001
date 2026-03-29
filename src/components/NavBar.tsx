@@ -134,7 +134,7 @@ export function NavBar({ user }: Props) {
               </button>
             ))}
           </div>
-          <Link href="/"
+          <Link href="/landing"
             className="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors"
             style={{ background: "var(--bg-input)", color: "var(--text-sub)" }}
           >
