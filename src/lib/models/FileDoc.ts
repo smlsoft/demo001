@@ -9,6 +9,7 @@ export interface IFileDoc extends Document {
   category: string;
   description: string;
   r2Key: string; // เก็บ key ใน R2
+  linkedTxId: string;
   createdAt: Date;
 }
 
@@ -21,9 +22,10 @@ const FileDocSchema = new Schema<IFileDoc>(
     size: { type: Number, required: true },
     category: {
       type: String,
-      enum: ["เอกสาร", "รูปภาพ", "ใบเสร็จ", "สัญญา", "อื่นๆ"],
+      enum: ["เอกสาร", "รูปภาพ", "ใบเสร็จ", "สัญญา", "slip เงินเข้า", "slip เงินออก", "เอกสารเงินเข้า", "เอกสารเงินออก", "อื่นๆ"],
       default: "อื่นๆ",
     },
+    linkedTxId: { type: String, default: "" },
     description: { type: String, default: "" },
     r2Key: { type: String, required: true },
   },

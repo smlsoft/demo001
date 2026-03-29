@@ -267,6 +267,9 @@ export default function DashboardPage() {
               { href: "/dashboard/debts", icon: "📋", label: t("หนี้สิน", dialect) },
               { href: "/dashboard/groups", icon: "👥", label: t("กลุ่มออม", dialect) },
               { href: "/dashboard/achievements", icon: "🏅", label: t("รางวัล", dialect) },
+              { href: "/dashboard/slips", icon: "🧾", label: "Slip" },
+              { href: "/dashboard/docs-income", icon: "📥", label: "เอกสารเงินเข้า" },
+              { href: "/dashboard/docs-expense", icon: "📤", label: "เอกสารเงินออก" },
               { href: "/dashboard/forecast", icon: "🔮", label: t("พยากรณ์", dialect) },
               { href: "/dashboard/telegram", icon: "📱", label: t("Telegram", dialect) },
             ].map((item) => (

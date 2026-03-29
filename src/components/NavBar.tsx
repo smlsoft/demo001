@@ -43,6 +43,9 @@ export function NavBar({ user }: Props) {
     { href: "/dashboard/debts", label: t("หนี้สิน", dialect), icon: "📋" },
     { href: "/dashboard/groups", label: t("กลุ่มออม", dialect), icon: "👥" },
     { href: "/dashboard/achievements", label: t("รางวัล", dialect), icon: "🏅" },
+    { href: "/dashboard/slips", label: "Slip", icon: "🧾" },
+    { href: "/dashboard/docs-income", label: "เอกสารเงินเข้า", icon: "📥" },
+    { href: "/dashboard/docs-expense", label: "เอกสารเงินออก", icon: "📤" },
     { href: "/dashboard/forecast", label: t("พยากรณ์", dialect), icon: "🔮" },
     { href: "/dashboard/telegram", label: t("Telegram", dialect), icon: "📱" },
   ];
