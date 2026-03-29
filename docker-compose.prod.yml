@@ -1,0 +1,13 @@
+version: "3.8"
+
+services:
+  thaiclaw:
+    build: .
+    container_name: demo001-web
+    restart: unless-stopped
+    ports:
+      - "3100:3000"
+    env_file:
+      - .env.local
+    environment:
+      - NODE_ENV=production
